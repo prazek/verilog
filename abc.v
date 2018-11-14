@@ -41,7 +41,7 @@ module divider
     genvar i;
     generate
         for (i = BITS-1; i >= 0; i = i - 1) begin : gen_divisors
-            divider_impl #(.BIT_NUM(i), .DIVISOR_BITS(BITS) impl(dividends[i + 1],
+            divider_impl #(.BIT_NUM(i), .DIVISOR_BITS(BITS)) impl(dividends[i + 1],
                               divisor,
                               result[i],
                               dividends[i]);
