@@ -10,7 +10,7 @@ module divider_impl # (parameter BIT_NUM = 4, parameter DIVISOR_BITS = 4)
 );
     reg result_bit;
     always @(dividend or divisor) begin
-        if (dividend >= (divisor << BIT_NUM)) begin
+        if ((dividend >> BIT_NUM) >= divisor) begin
             result_bit = 1;
             rest = dividend - (divisor << BIT_NUM);
         end
@@ -41,7 +41,7 @@ module divider
     genvar i;
     generate
         for (i = BITS-1; i >= 0; i = i - 1) begin : gen_divisors
-            divider_impl #(.BIT_NUM(i)) impl(dividends[i + 1],
+            divider_impl #(.BIT_NUM(i), .DIVISOR_BITS(BITS) impl(dividends[i + 1],
                               divisor,
                               result[i],
                               dividends[i]);
