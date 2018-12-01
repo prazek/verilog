@@ -1,9 +1,9 @@
 # Pin assignment for LEDs
-NET "Led<7>" LOC = "G1" ; # Bank = 3, Signal name = LD7
-NET "Led<6>" LOC = "P4" ; # Bank = 2, Signal name = LD6
-NET "Led<5>" LOC = "N4" ;  # Bank = 2, Signal name = LD5
-NET "Led<4>" LOC = "N5" ;  # Bank = 2, Signal name = LD4
-NET "Led<3>" LOC = "P6" ; # Bank = 2, Signal name = LD3
+#NET "Led<7>" LOC = "G1" ; # Bank = 3, Signal name = LD7
+#NET "Led<6>" LOC = "P4" ; # Bank = 2, Signal name = LD6
+#NET "Led<5>" LOC = "N4" ;  # Bank = 2, Signal name = LD5
+#NET "Led<4>" LOC = "N5" ;  # Bank = 2, Signal name = LD4
+#NET "Led<3>" LOC = "P6" ; # Bank = 2, Signal name = LD3
 NET "Led<2>" LOC = "P7" ; # Bank = 3, Signal name = LD2
 NET "Led<1>" LOC = "M11" ; # Bank = 2, Signal name = LD1
 NET "Led<0>" LOC = "M5" ;  # Bank = 2, Signal name = LD0
@@ -23,3 +23,20 @@ NET "btn<3>" LOC = "A7";
 NET "btn<2>" LOC = "M4";
 NET "btn<1>" LOC = "C11";
 NET "btn<0>" LOC = "G12";
+
+NET "an<0>" LOC = "F12";
+NET "an<1>" LOC = "J12";
+NET "an<2>" LOC = "M13";
+NET "an<3>" LOC = "K14";
+
+NET "seg<0>" LOC = "L14";
+NET "seg<1>" LOC = "H12";
+NET "seg<2>" LOC = "N14";
+NET "seg<3>" LOC = "N11";
+NET "seg<4>" LOC = "P12";
+NET "seg<5>" LOC = "L13";
+NET "seg<6>" LOC = "M12";
+NET "dp" LOC = "N13";
+
+
+NET "mclk" LOC = "B8";
