@@ -10,8 +10,8 @@ NET "Led<0>" LOC = "M5" ;  # Bank = 2, Signal name = LD0
 
 # Pin assignment for SWs
 NET "sw<7>" LOC = "N3";  # Bank = 2, Signal name = SW7
-NET "sw<6>" LOC = "E2";  # Bank = 3, Signal name = SW6
-NET "sw<5>" LOC = "F3";  # Bank = 3, Signal name = SW5
+#NET "sw<6>" LOC = "E2";  # Bank = 3, Signal name = SW6
+#NET "sw<5>" LOC = "F3";  # Bank = 3, Signal name = SW5
 NET "sw<4>" LOC = "G3";  # Bank = 3, Signal name = SW4
 NET "sw<3>" LOC = "B4";  # Bank = 3, Signal name = SW3
 NET "sw<2>" LOC = "K3";  # Bank = 3, Signal name = SW2
@@ -40,3 +40,5 @@ NET "dp" LOC = "N13";
 
 
 NET "mclk" LOC = "B8";
+NET "uclk" LOC = "M6";
+NET "uclk" CLOCK_DEDICATED_ROUTE = FALSE;
