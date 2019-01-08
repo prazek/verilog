@@ -1,0 +1,4 @@
+verilog work "top.v"
+verilog work "calculator.v"
+verilog work "display.v"
+
