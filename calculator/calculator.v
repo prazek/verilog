@@ -5,25 +5,25 @@ module SynchronousDividerImpl
 (
     input [BITS-1:0]      dividend,
     input [BITS-1:0]      divisor,
-    input  [10:0]         bitidx,
+    input [10:0]          bitidx,
     output reg            result_bit,
     output reg [BITS-1:0] rest
 );
     wire [BITS*2-1:0] extended_divisor = divisor << bitidx;
-    always @(*) begin
-        if (dividend >= extended_divisor) begin
-            result_bit = 1;
-            rest = dividend-extended_divisor;
-        end
-        else begin
-            result_bit = 0;
-            rest = dividend;
-        end
+    always @ (* ) begin
+    if (dividend >= extended_divisor) begin
+    result_bit = 1;
+    rest = dividend-extended_divisor;
+    end
+    else begin
+    result_bit = 0;
+    rest = dividend;
+    end
     end
 
 endmodule
 
-module SynchronousDivider
+module UnsignedSynchronousDivider
 #(parameter BITS = 32)
 (
     input                 clk,
@@ -64,6 +64,50 @@ module SynchronousDivider
             bitidx <= bitidx-1;
         end
     end
+
+endmodule
+
+module SynchronousDivider#(parameter BITS = 32)
+(
+    input             clk,
+    input             start,
+    input  [BITS-1:0] dividend,
+    input  [BITS-1:0] divisor,
+    output [BITS-1:0] result,
+    output [BITS-1:0] rest,
+    output            finished
+);
+
+    wire            is_dividend_positive = dividend[BITS-1];
+    wire            is_divisor_positive = divisor[BITS-1];
+    wire [BITS-1:0] positive_dividend = is_dividend_positive ?
+        ~dividend+1:dividend;
+    wire [BITS-1:0] positive_divisor = is_divisor_positive ?
+        ~divisor+1:divisor;
+
+
+    wire [BITS-1:0] positive_result;
+    wire [BITS-1:0] positive_rest;
+    wire            should_negate_results = is_dividend_positive ^ is_divisor_positive;
+
+    wire            is_dividend_min_int = dividend == ~dividend+1;
+    wire            is_divisor_minus_one = divisor == ~0;
+
+        // return 0 for MIN_INT / -1 as -MIN_INT is not representable in U2
+    assign result = is_dividend_min_int & is_divisor_minus_one ? 0:(should_negate_results ?
+        ~positive_result+1:positive_result);
+    assign rest = should_negate_results ?
+        ~positive_rest+1:positive_rest;
+
+    UnsignedSynchronousDivider#(.BITS(BITS)) divider(
+        .clk     (clk),
+        .start   (start),
+        .dividend(positive_dividend),
+        .divisor (positive_divisor),
+        .result  (positive_result),
+        .rest    (positive_rest),
+        .finished(finished)
+    );
 
 endmodule
 
