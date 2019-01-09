@@ -103,7 +103,7 @@ module top(
 
     Display display(
         .clk          (clk),
-        .number       (output_num), // TODO bigger value
+        .number       (output_num),
         .display_lines(empty_stack),
         .an           (an),
         .seg          (seg),

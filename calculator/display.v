@@ -36,20 +36,23 @@ module Divider
     genvar i;
     generate
         for (i = BITS-1; i >= 0; i = i-1) begin : gen_divisors
-            Divider_impl#(.BIT_NUM(i), .DIVISOR_BITS(BITS)) impl(dividends[i+1],
-                                                                 divisor,
-                                                                 result[i],
-                                                                 dividends[i]);
+            Divider_impl#(.BIT_NUM(i), .DIVISOR_BITS(BITS)) impl(
+                .dividend  (dividends[i+1]),
+                .divisor   (divisor),
+                .result_bit(result[i]),
+                .rest      (dividends[i])
+            );
         end
     endgenerate
     assign rest = dividends[0];
 
-
 endmodule
+
+
 module Counter(
     input wire        clk,
     input wire        reset,
-    output reg [32:0] value = 0
+    output reg [15:0] value = 0
 );
     always @(posedge clk, posedge reset) begin
         if (reset)
@@ -99,11 +102,11 @@ module Display(
     output wire [6:0]  seg,
     output wire        dp
 );
-    wire [32:0] value;
+    wire [15:0] value;
     reg         reset = 0;
     reg [2:0]   phase = 3'b001;
-    reg [2:0]   which_seg = 0;
-    reg [4:0]   current_digit = 0;
+    reg [1:0]   which_seg = 0;
+    reg [3:0]   current_digit = 0;
     reg [15:0]  current_number = 0;
     reg [15:0]  rest_number = 0;
     assign dp = 1;
@@ -114,14 +117,14 @@ module Display(
         .value(value)
     );
     Segment segment(
-        .digit(current_digit),
+        .digit        (current_digit),
         .display_lines(display_lines),
-        .seg  (seg)
+        .seg          (seg)
     );
 
-    wire [15:0] rest_number_wire; // TODO
+    wire [15:0] rest_number_wire;
     wire [3:0]  current_digit_wire;
-    Divider#(.BITS(15)) divider(
+    Divider#(.BITS(16)) divider(
         .dividend(current_number),
         .divisor (16),
         .result  (rest_number_wire),
@@ -130,7 +133,7 @@ module Display(
 
     always @(posedge clk) begin
         current_digit = current_digit_wire;
-        rest_number = rest_number_wire;
+        rest_number <= rest_number_wire;
         case (phase)
             default: begin
                 phase <= 3'b001;

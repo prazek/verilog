@@ -1,29 +1,119 @@
 `default_nettype none
 
+module SynchronousDividerImpl
+#(parameter BITS = 32)
+(
+    input [BITS-1:0]      dividend,
+    input [BITS-1:0]      divisor,
+    input  [10:0]         bitidx,
+    output reg            result_bit,
+    output reg [BITS-1:0] rest
+);
+    wire [BITS*2-1:0] extended_divisor = divisor << bitidx;
+    always @(*) begin
+        if (dividend >= extended_divisor) begin
+            result_bit = 1;
+            rest = dividend-extended_divisor;
+        end
+        else begin
+            result_bit = 0;
+            rest = dividend;
+        end
+    end
+
+endmodule
+
+module SynchronousDivider
+#(parameter BITS = 32)
+(
+    input                 clk,
+    input                 start,
+    input [BITS-1:0]      dividend,
+    input [BITS-1:0]      divisor,
+    output reg [BITS-1:0] result,
+    output reg [BITS-1:0] rest,
+    output                finished
+);
+    reg             active = 0;
+    reg [10:0]      bitidx = 0;
+    wire            result_bit;
+    wire [BITS-1:0] out;
+    assign finished = !active;
+
+    SynchronousDividerImpl#(.BITS(BITS)) impl(
+        .dividend  (rest),
+        .divisor   (divisor),
+        .bitidx    (bitidx),
+        .result_bit(result_bit),
+        .rest      (out)
+    );
+
+    always @(posedge clk) begin
+        if (!active) begin
+            if (start) begin
+                result <= 0;
+                rest <= dividend;
+                active <= 1;
+                bitidx <= BITS-1;
+            end
+        end else begin
+            rest <= out;
+            result[bitidx] <= result_bit;
+            if (bitidx == 0)
+                active <= 0;
+            bitidx <= bitidx-1;
+        end
+    end
+
+endmodule
+
+
 module Executor(
     input                   clk,
-    input                   active,
+    input                   start,
     input [31:0]            top,
     input [31:0]            second,
+    input [7:0]             input_number,
     input                   no_top,
     input                   no_second,
-    input [2:0]             op_code,
+    input [4:0]             op_code,
     output reg              error,
     output reg signed [1:0] stack_diff,
     output reg [31:0]       out_top,
     output reg [31:0]       out_second,
-    output reg              second_exist
+    output reg              second_exist,
+    output                  finished
 );
 
+    reg         active = 0;
+    assign finished = !active;
+    wire [31:0] div_result;
+    wire [31:0] div_rest;
+    wire        divider_finished;
+    SynchronousDivider#(.BITS(32)) divider(
+        .clk     (clk),
+        .start   (start),
+        .dividend(top),
+        .divisor (second),
+        .result  (div_result),
+        .rest    (div_rest),
+        .finished(divider_finished)
+    );
+
     always @(posedge clk) begin
-        if (active) begin
-            out_top <= 0;
-            out_second <= 0;
-            error <= 0;
-            stack_diff <= 0;
-            second_exist <= 0;
+        if (!active) begin
+            if (start) begin
+                active <= 1;
+                out_top <= 0;
+                out_second <= 0;
+                error <= 0;
+                stack_diff <= 0;
+                second_exist <= 0;
+            end
+        end else begin
+            active <= 0;
             case (op_code)
-                3'b000: begin
+                5'b00000: begin // +
                     if (no_top | no_second) begin
                         error <= 1;
                     end else begin
@@ -31,7 +121,7 @@ module Executor(
                         stack_diff <= -1;
                     end
                 end
-                3'b001: begin
+                5'b00001: begin // -
                     if (no_top | no_second) begin
                         error <= 1;
                     end else begin
@@ -39,7 +129,7 @@ module Executor(
                         stack_diff <= -1;
                     end
                 end
-                3'b010: begin
+                5'b00010: begin // *
                     if (no_top | no_second) begin
                         error <= 1;
                     end else begin
@@ -47,8 +137,31 @@ module Executor(
                         stack_diff <= -1;
                     end
                 end
-                //TODO rest ops
-                3'b101: begin // pop
+                5'b00011: begin // /
+                    if (no_top | no_second | second == 0) begin
+                        error <= 1;
+                    end else begin
+                        if (divider_finished) begin
+                            active <= 0;
+                            out_top <= div_result;
+                            stack_diff <= -1;
+                        end else
+                            active <= 1;
+                    end
+                end
+                5'b00100: begin // %
+                    if (no_top | no_second | second == 0) begin
+                        error <= 1;
+                    end else begin
+                        if (divider_finished) begin
+                            active <= 0;
+                            out_top <= div_rest;
+                            stack_diff <= -1;
+                        end else
+                            active <= 1;
+                    end
+                end
+                5'b00101: begin // pop
                     if (no_top) begin
                         error <= 1;
                     end else begin
@@ -56,7 +169,7 @@ module Executor(
                         stack_diff <= -1;
                     end
                 end
-                3'b110: begin // copy top
+                5'b00110: begin // copy top
                     if (no_top) begin
                         error <= 1;
                     end else begin
@@ -66,13 +179,25 @@ module Executor(
                         stack_diff <= 1;
                     end
                 end
-                3'b111: begin // swap
+                5'b00111: begin // swap
                     if (no_top | no_second) begin
                         error <= 1;
                     end else begin
                         second_exist <= 1;
                         out_top <= second;
                         out_second <= top;
+                        stack_diff <= 0;
+                    end
+                end
+                5'b01000: begin // push num
+                    out_top <= input_number;
+                    stack_diff <= 1;
+                end
+                5'b10000: begin // shift and push
+                    if (no_top)
+                        error <= 1;
+                    else begin
+                        out_top <= top << 8 | input_number;
                         stack_diff <= 0;
                     end
                 end
@@ -101,6 +226,7 @@ module Calculator(
     output            empty_stack
 );
 
+    parameter STACK_MAX_SIZE = 5;
     initial stack_size = 0;
 
     reg [31:0]         top;
@@ -141,27 +267,29 @@ module Calculator(
     reg [5:0]          stage = 0;
     reg                no_top = 0;
     reg                no_second = 0;
-    reg                executor_active = 0;
+    reg                start_executor = 0;
     reg                will_write_second = 0;
     wire signed [2:0]  stack_diff;
     wire        [31:0] out_top;
     wire        [31:0] out_second;
     wire               out_error_bit;
     wire               second_exists;
-
+    wire               executor_finished;
     Executor executor(
         .clk         (clk),
-        .active      (executor_active),
+        .start       (start_executor),
         .top         (top),
         .second      (second),
+        .input_number(input_number),
         .no_top      (no_top),
         .no_second   (no_second),
-        .op_code     (op_code[3:0]),
+        .op_code     (op_code),
         .error       (out_error_bit),
         .stack_diff  (stack_diff),
         .out_top     (out_top),
         .out_second  (out_second),
-        .second_exist(second_exists)
+        .second_exist(second_exists),
+        .finished    (executor_finished)
     );
 
     always @(posedge clk) begin
@@ -170,7 +298,7 @@ module Calculator(
             op_code <= 0;
             active <= 0;
             stage <= 0;
-            executor_active <= 0;
+            start_executor <= 0;
             error_bit <= 0;
             enable_write_top <= 0;
             enable_write_second <= 0;
@@ -181,14 +309,9 @@ module Calculator(
                 active <= 1;
                 error_bit <= 0;
                 will_write_second <= 0;
-                if (push_num | shift_and_push) begin
-                    op_code[2:0] <= 0;
-                    op_code[3] <= push_num;
-                    op_code[4] <= shift_and_push;
-                end else begin
-                    op_code[2:0] <= other_op_code;
-                    op_code[4:3] <= 0;
-                end
+                op_code[2:0] <= push_num | shift_and_push ? 0:other_op_code;
+                op_code[3] <= push_num;
+                op_code[4] <= shift_and_push;
                 stage <= 0;
             end
         end
@@ -196,7 +319,7 @@ module Calculator(
             case (stage)
                 6'b000000: begin // initiate read data
                     top_address <= stack_size-1;
-                    if (stack_size > 0) begin // TODO check for stack overflow
+                    if (stack_size > 0) begin
                         read_top <= 1;
                         no_top <= 0;
                     end else begin
@@ -219,43 +342,27 @@ module Calculator(
                 6'b000010: begin // copy output, start executor
                     top <= top_load;
                     second <= second_load;
-                    executor_active <= !(| op_code[4:3]);
+                    start_executor <= 1;
                     stage <= stage << 1;
                 end
                 6'b000100: begin // execute
                     stage <= stage << 1;
-                    executor_active <= 0;
+                    start_executor <= 0;
                 end
-                6'b001000: begin
-                    case (op_code)
-                        default: begin // get out from executor
-                            top <= out_top;
-                            if (second_exists) begin
-                                second <= out_second;
-                                will_write_second <= 1;
-                            end
-                            error_bit <= out_error_bit;
-                            if (stack_size + stack_diff > 512)
-                                error_bit <= 1;
-                            else
-                                stack_size <= stack_size+stack_diff;
+                6'b001000: begin // get out from executor
+                    if (executor_finished) begin
+                        top <= out_top;
+                        if (second_exists) begin
+                            second <= out_second;
+                            will_write_second <= 1;
                         end
-                        5'b01000: begin // push_num
-                            top <= input_number;
-                            if (stack_size + 1 > 512)
-                                error_bit <= 1;
-                            else
-                                stack_size <= stack_size+1;
-                        end
-                        5'b10000: begin // shift and push
-                            if (no_top)
-                                error_bit <= 1;
-                            else begin
-                                top <= top << 16 | input_number;
-                            end
-                        end
-                    endcase
-                    stage <= stage << 1;
+                        error_bit <= out_error_bit;
+                        if (stack_size+stack_diff > STACK_MAX_SIZE)
+                            error_bit <= 1;
+                        else
+                            stack_size <= stack_size+stack_diff;
+                        stage <= stage << 1;
+                    end
                 end
                 6'b010000: begin // initialize write
                     if (!error_bit) begin
@@ -264,7 +371,7 @@ module Calculator(
                         if (will_write_second) begin
                             enable_write_second <= 1;
                         end
-                        out_num <= top; // TODO
+                        out_num <= top;
                     end
                     stage <= stage << 1;
                 end
