@@ -1,0 +1,4 @@
+verilog work "top.v"
+verilog work "vga.v"
+verilog work "EPP.v"
+verilog work "GraphicsCard.v"
