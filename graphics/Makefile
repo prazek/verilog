@@ -2,7 +2,7 @@ all: graphics
 
 graphics: graphics_par.bit
 
-graphics_par.bit : vga.v top.v graphics.xst graphics.ucf graphics.prj
+graphics_par.bit : vga.v top.v graphics.xst graphics.ucf graphics.prj EPP.v GraphicsCard.v
 	xst -ifn graphics.xst
 	echo "Linkowanie (.ngc -> .ngd)"
 	ngdbuild graphics -uc graphics.ucf

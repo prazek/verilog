@@ -1,5 +1,6 @@
 `default_nettype none
 
+// TODO chyange resolution
 module vga640x480(
     input wire i_clk,           // base clock
     input wire i_pix_stb,       // pixel clock strobe

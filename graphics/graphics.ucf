@@ -24,27 +24,27 @@ NET "VSYNC"   LOC = "K13"  | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = VSY
 NET "VGA_R<2>"  LOC = "F13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = RED2
 NET "VGA_R<1>"  LOC = "D13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = RED1
 NET "VGA_R<0>"  LOC = "C14"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = RED0
-NET "VGA_R<2>"  LOC = "G14"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN2
-NET "VGA_R<1>"  LOC = "G13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN1
-NET "VGA_R<0>"  LOC = "F14"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN0
+NET "VGA_G<2>"  LOC = "G14"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN2
+NET "VGA_G<1>"  LOC = "G13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN1
+NET "VGA_G<0>"  LOC = "F14"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = GRN0
 NET "VGA_B<2>"  LOC = "J13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = BLU2
 NET "VGA_B<1>"  LOC = "H13"   | DRIVE = 2  | PULLUP ; # Bank = 1, Signal name = BLU1
 
 
 
 # Connected to Basys2 onBoard USB controller
-#NET "EppAstb" LOC = "F2"; # Bank = 3
-#NET "EppDstb" LOC = "F1"; # Bank = 3
-#NET "EppWR"       LOC = "C2"; # Bank = 3
+NET "EppAstb" LOC = "F2"; # Bank = 3
+NET "EppDstb" LOC = "F1"; # Bank = 3
+NET "EppWR"       LOC = "C2"; # Bank = 3
 #
-#NET "EppWait" LOC = "D2"; # Bank = 3
+NET "EppWait" LOC = "D2"; # Bank = 3
 #
 #
-#NET "EppDB<0>" LOC = "N2"; # Bank = 2
-#NET "EppDB<1>" LOC = "M2"; # Bank = 2
-#NET "EppDB<2>" LOC = "M1"; # Bank = 3
-#NET "EppDB<3>" LOC = "L1"; # Bank = 3
-#NET "EppDB<4>" LOC = "L2"; # Bank = 3
-#NET "EppDB<5>" LOC = "H2"; # Bank = 3
-#NET "EppDB<6>" LOC = "H1"; # Bank = 3
-#NET "EppDB<7>" LOC = "H3"; # Bank = 3
+NET "EppDB<0>" LOC = "N2"; # Bank = 2
+NET "EppDB<1>" LOC = "M2"; # Bank = 2
+NET "EppDB<2>" LOC = "M1"; # Bank = 3
+NET "EppDB<3>" LOC = "L1"; # Bank = 3
+NET "EppDB<4>" LOC = "L2"; # Bank = 3
+NET "EppDB<5>" LOC = "H2"; # Bank = 3
+NET "EppDB<6>" LOC = "H1"; # Bank = 3
+NET "EppDB<7>" LOC = "H3"; # Bank = 3
