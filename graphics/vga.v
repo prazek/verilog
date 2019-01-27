@@ -27,7 +27,7 @@ module vga640x400(
     reg [9:0] h_count;  // line position
     reg [9:0] v_count;  // screen position
 
-        // generate sync signals (active low for 640x480)
+        // generate sync signals (active low/high for 640x400)
     assign o_hs = ~((h_count >= HS_STA) & (h_count < HS_END));
     assign o_vs = ((v_count >= VS_STA) & (v_count < VS_END));
 

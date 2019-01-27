@@ -3,15 +3,16 @@ all: graphics
 graphics: graphics_par.bit
 
 graphics_par.bit : vga.v top.v graphics.xst graphics.ucf graphics.prj EPP.v GraphicsCard.v
-	xst -ifn graphics.xst
-	echo "Linkowanie (.ngc -> .ngd)"
-	ngdbuild graphics -uc graphics.ucf
-	echo "Tłumaczenie na prymitywy dostępne w układzie Spartan 3E (.ngd -> .ncd)"
-	map graphics
-	echo "Place and route (.ncd -> lepszy .ncd)"
-	par -w graphics.ncd graphics_par.ncd
-	echo "Generowanie finalnego bitstreamu (.ncd -> .bit)"
-	bitgen -w graphics_par.ncd -g StartupClk:JTAGClk
+	rm -f synthesis.log
+	xst -ifn graphics.xst >> synthesis.log
+	echo "Linkowanie (.ngc -> .ngd)" >> synthesis.log
+	ngdbuild graphics -uc graphics.ucf >> synthesis.log
+	echo "Tłumaczenie na prymitywy dostępne w układzie Spartan 3E (.ngd -> .ncd)" >> synthesis.log
+	map graphics >> synthesis.log
+	echo "Place and route (.ncd -> lepszy .ncd)" >> synthesis.log
+	par -w graphics.ncd graphics_par.ncd >> synthesis.log
+	echo "Generowanie finalnego bitstreamu (.ncd -> .bit)" >> synthesis.log
+	bitgen -w graphics_par.ncd -g StartupClk:JTAGClk >> synthesis.log
 	echo "done"
 
 	
