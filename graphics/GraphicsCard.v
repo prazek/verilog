@@ -15,18 +15,27 @@ module GraphicsCard(
 
         // wire rst = RST_BTN;  // reset is active high on Basys3 (BTNC)
 
+
+    wire vclk;
         // generate a 25 MHz pixel strobe
-    reg [15:0]  cnt = 0;
-    reg         pix_stb;
-    always @(posedge clk)
-        {pix_stb, cnt} <= cnt+16'h4000;  // divide by 4: (2^16)/4 = 0x4000
+    DCM_SP #(
+    .CLKFX_DIVIDE(4),
+    .CLKFX_MULTIPLY(2),
+    .CLKIN_PERIOD(50),
+    .CLK_FEEDBACK("NONE"),
+    .STARTUP_WAIT("TRUE")
+    ) dcm_vclk (
+        .CLKFX(vclk),
+        .CLKIN(clk)
+    );
+
 
     wire [9:0]  x;  // current pixel x position: 10-bit value: 0-1023
     wire [8:0]  y;  // current pixel y position:  9-bit value: 0-511
 
-    vga640x480 display(
+    vga640x400 display(
         .i_clk    (clk),
-        .i_pix_stb(pix_stb),
+        .i_pix_stb(vclk),
         .i_rst    (reset),
         .o_hs     (hsync),
         .o_vs     (vsync),
@@ -46,6 +55,8 @@ module GraphicsCard(
     wire        ram_out = ram_out_t[which_ram];
 
     wire        set_pixel = ((x > 120) & (y > 40) & (x < 280) & (y < 200)) ? 1:0;
+    wire ram_out2 = set_pixel;
+
 
     genvar i;
     generate
@@ -57,7 +68,7 @@ module GraphicsCard(
                 //.DOB  (DOB), // Port B 1-bit Data Output
                 .ADDRA(ram_addr), // Port A 14-bit Address Input
                 // TODO
-                .ADDRB(0), // Port B 14-bit Address Input
+                .ADDRB(ram_addr), // Port B 14-bit Address Input
                 .CLKA (clk), // Port A Clock
                 .CLKB (clk), // Port B Clock
                 .DIA  (0), // Port A 1-bit Data Input
@@ -67,7 +78,7 @@ module GraphicsCard(
                 //.SSRA (SSRA), // Port A Synchronous Set/Reset Input
                 //.SSRB (SSRB), // Port B Synchronous Set/Reset Input
                 .WEA  (0), // Port A Write Enable Input
-                .WEB  (1) // Port B Write Enable Input
+                .WEB  (which_ram == i) // Port B Write Enable Input
             );
         end
     endgenerate
