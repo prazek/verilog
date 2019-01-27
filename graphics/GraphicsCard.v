@@ -51,23 +51,39 @@ module GraphicsCard(
     wire [8:0] real_disp_x = display_x >> 1;       // 0 - 511
     wire [7:0] real_disp_y = display_y >> 1;       // 0 - 255
 
-    reg        ram_enable_write;
-    reg        ram_write_value;
 
-    reg [8:0]  current_x = 0;
-    reg [7:0]  current_y = 0;
 
-    GPU_RAM gpuram(
+    wire [8:0] op_x;
+    wire [7:0] op_y;
+    wire op_ram_enable_write;
+    wire op_ram_write_value;
+
+    GPU_Operations ops(
+        .clk(clk),
+        .X1(X1),
+        .Y1(Y1),
+        .X2(X2),
+        .Y2(Y2),
+        .start_fill(start_fill),
+        .fill_value(fill_value),
+        // outs
+        .op_x(op_x),
+        .op_y(op_y),
+        .op_ram_enable_write(op_ram_enable_write),
+        .op_ram_write_value(op_ram_write_value)
+    );
+
+    GPU_RAM gpu_ram(
         .clk          (clk),
         .x1           (real_disp_x),
         .y1           (real_disp_y),
         .enable_read1 (out_active),
         .read_value1  (pixel_value),
-        .x2           (current_x),
-        .y2           (current_y),
+        .x2           (op_x),
+        .y2           (op_y),
         .enable_read2 (0),
-        .enable_write2(ram_enable_write),
-        .write_value  (ram_write_value)
+        .enable_write2(op_ram_enable_write),
+        .write_value  (op_ram_write_value)
     );
 
     wire       output_value = pixel_value & out_active;
@@ -75,54 +91,6 @@ module GraphicsCard(
     assign VGA_G[2:0] = {3{output_value}};
     assign VGA_B[2:1] = {2{output_value}};
 
-    localparam READY_STATE = 0;
-    localparam INITIATE_FILL_STATE = 1;
-    localparam FILL_IN_PROGRESS = 2;
 
-    reg [4:0]  state = READY_STATE;
-
-    reg        op_fill_value = 0;
-    reg [8:0]  opX1;
-    reg [7:0]  opY1;
-    reg [8:0]  opX2;
-    reg [7:0]  opY2;
-
-    always @(posedge clk) begin
-        case (state)
-            READY_STATE: begin
-                if (start_fill) begin
-                    state <= INITIATE_FILL_STATE;
-                    opX1 <= X1;
-                    opX2 <= X2;
-                    opY1 <= Y1;
-                    opY2 <= Y2;
-                    op_fill_value <= fill_value;
-                end
-            end
-            INITIATE_FILL_STATE: begin
-                if (opX1 <= opX2 && opY1 <= opY2) begin
-                    state <= FILL_IN_PROGRESS;
-                    current_x <= opX1;
-                    current_y <= opY1;
-                    ram_write_value <= op_fill_value;
-                    ram_enable_write <= 1;
-                end else // invalid fill values
-                    state <= READY_STATE;
-            end
-            FILL_IN_PROGRESS: begin
-                current_x <= current_x+1;
-                if (current_x+1 > opX2) begin
-                    current_x <= opX1;
-                    current_y <= current_y+1;
-                    if (current_y+1 > opY2) begin
-                        ram_enable_write <= 0;
-                        state <= READY_STATE;
-                    end
-                end
-
-            end
-
-        endcase
-    end
 
 endmodule
