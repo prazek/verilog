@@ -20,8 +20,8 @@ module EPP(
     output reg        fill_value
 
 );
-    reg [7:0] address;
-    reg [7:0] registers [16:0];
+    reg [7:0]  address;
+    reg [7:0]  registers [16:0];
 
     assign X1 = {registers[1], registers[0]};
     assign Y1 = {registers[3], registers[2]};
@@ -30,11 +30,25 @@ module EPP(
     assign op_width = {registers[9], registers[8]};
     assign op_height = {registers[11], registers[10]};
 
-
+    reg        do_op = 1;
+    reg [10:0] cnt = 0;
     always @(posedge clk) begin
+
         start_blit <= 0;
         start_fill <= 0;
         fill_value <= 0;
+        cnt <= cnt+1;
+        if (do_op & cnt == 400) begin
+            registers[0] <= 20;
+            registers[2] <= 40;
+            registers[4] <= 150;
+            registers[6] <= 160;
+            start_fill <= 1;
+            fill_value <= 1;
+            do_op <= 0;
+        end
+
+
         if (EppAstb == 0)
             address <= EppDB;
         else if (EppDstb == 0) begin
@@ -51,7 +65,5 @@ module EPP(
 
         end
     end
-
-
-
+    
 endmodule
