@@ -16,7 +16,9 @@ module EPP(
     output     [15:0] op_width,
     output     [15:0] op_height,
     output reg        start_blit,
-    output reg        start_fill
+    output reg        start_fill,
+    output reg        fill_value
+
 );
     reg [7:0] address;
     reg [7:0] registers [16:0];
@@ -32,6 +34,7 @@ module EPP(
     always @(posedge clk) begin
         start_blit <= 0;
         start_fill <= 0;
+        fill_value <= 0;
         if (EppAstb == 0)
             address <= EppDB;
         else if (EppDstb == 0) begin
@@ -40,9 +43,10 @@ module EPP(
             else begin
                 if (address == 12)
                     start_blit <= 1;
-                else if (address == 13)
+                else if (address == 13) begin
                     start_fill <= 1;
-
+                    fill_value <= EppDB[0:0];
+                end
             end
 
         end

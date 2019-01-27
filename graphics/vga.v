@@ -39,7 +39,7 @@ module vga640x400(
     assign o_blanking = ((h_count < HA_STA) | (v_count > VA_END - 1));
 
         // active: high during active pixel drawing
-    assign o_active = ~((h_count < HA_STA) | (v_count > VA_END - 1));
+    assign o_active = ~o_blanking;
 
         // screenend: high for one tick at the end of the screen
     assign o_screenend = ((v_count == SCREEN - 1) & (h_count == LINE));

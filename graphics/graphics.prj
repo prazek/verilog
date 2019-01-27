@@ -1,4 +1,5 @@
-verilog work "top.v"
 verilog work "vga.v"
 verilog work "EPP.v"
+verilog work "GPU_RAM.v"
 verilog work "GraphicsCard.v"
+verilog work "top.v"

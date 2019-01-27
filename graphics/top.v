@@ -18,23 +18,46 @@ module top(
 );
     assign Led = 0;
 
+    wire        start_fill;
+    wire        fill_value;
+    wire [15:0] X1;
+    wire [15:0] Y1;
+    wire [15:0] X2;
+    wire [15:0] Y2;
+
+
     GraphicsCard graphics(
-        .clk  (CLK),
-        .reset(0),
-        .hsync(HSYNC),
-        .vsync(VSYNC),
-        .VGA_R(VGA_R),
-        .VGA_G(VGA_G),
-        .VGA_B(VGA_B)
+        .clk       (CLK),
+        .reset     (0),
+        // ops
+        .X1        (X1),
+        .Y1        (Y1),
+        .X2        (X2),
+        .Y2        (Y2),
+        .start_fill(start_fill),
+        .fill_value(fill_value),
+        // out
+        .hsync     (HSYNC),
+        .vsync     (VSYNC),
+        .VGA_R     (VGA_R),
+        .VGA_G     (VGA_G),
+        .VGA_B     (VGA_B)
     );
 
+
     EPP epp(
-        .clk    (CLK),
-        .EppAstb(EppAstb),
-        .EppDstb(EppDstb),
-        .EppWR  (EppWR),
-        .EppWait(EppWait),
-        .EppDB  (EppDB)
+        .clk       (CLK),
+        .EppAstb   (EppAstb),
+        .EppDstb   (EppDstb),
+        .EppWR     (EppWR),
+        .EppWait   (EppWait),
+        .EppDB     (EppDB),
+        .X1        (X1),
+        .Y1        (Y1),
+        .X2        (X2),
+        .Y2        (Y2),
+        .start_fill(start_fill),
+        .fill_value(fill_value)
     );
 
 

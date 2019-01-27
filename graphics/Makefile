@@ -2,7 +2,7 @@ all: graphics
 
 graphics: graphics_par.bit
 
-graphics_par.bit : vga.v top.v graphics.xst graphics.ucf graphics.prj EPP.v GraphicsCard.v
+graphics_par.bit : vga.v top.v graphics.xst graphics.ucf graphics.prj EPP.v GraphicsCard.v GPU_RAM.v
 	rm -f synthesis.log
 	xst -ifn graphics.xst >> synthesis.log
 	echo "Linkowanie (.ngc -> .ngd)" >> synthesis.log
