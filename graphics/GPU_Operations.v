@@ -47,6 +47,10 @@ module GPU_Operations#(parameter WIDTH = 320,
     reg [8:0] blit_x_offset;
     reg [7:0] blit_y_offset;
     reg       wait_for_read = 0;
+    wire      leftToRight = (_X1 > _X2);
+    wire      topToDown = (_Y1 > _Y2);
+    wire      change_line = leftToRight ? (blit_x_offset+1 == op_blit_x_width):(blit_x_offset == 0);
+    wire      finished_lines = topToDown ? (blit_y_offset+1 == op_blit_y_height):(blit_y_offset == 0);
 
     always @(posedge clk) begin
         case (state)
@@ -76,11 +80,11 @@ module GPU_Operations#(parameter WIDTH = 320,
                         state <= BLIT_IN_PROGESS;
                         op_x <= _X1;
                         op_y <= _Y1;
-                        blit_x_offset <= 0;
-                        blit_y_offset <= 0;
+                        blit_x_offset <= leftToRight ? 0:_blit_x_width-1;
+                        blit_y_offset <= topToDown ? 0:_blit_y_height-1;
                         op_ram_enable_read <= 1;
                         wait_for_read <= 1;
-                        debug_cnt <= 0;
+                        debug_cnt <= leftToRight << 1 | topToDown;
                     end
                 end
             end
@@ -114,15 +118,15 @@ module GPU_Operations#(parameter WIDTH = 320,
                     op_ram_enable_write <= 0;
 
                     op_y <= opY1+blit_y_offset;
-                    blit_x_offset <= blit_x_offset+1;
-                    op_x <= opX1+blit_x_offset+1;
-                    if (blit_x_offset+1 > op_blit_x_width) begin
-                        blit_x_offset <= 0;
-                        op_x <= opX1;
+                    blit_x_offset <= blit_x_offset+(leftToRight ? 1:-1);
+                    op_x <= opX1+blit_x_offset+(leftToRight ? 1:-1);
+                    if (change_line) begin
+                        blit_x_offset <= leftToRight ? 0:op_blit_x_width-1;
+                        op_x <= opX1 + leftToRight ? 0:op_blit_x_width-1;
 
-                        blit_y_offset <= blit_y_offset+1;
-                        op_y <= opY1+blit_y_offset+1;
-                        if (blit_y_offset+1 > op_blit_y_height) begin
+                        blit_y_offset <= blit_y_offset+(topToDown ? 1:-1);
+                        op_y <= opY1+blit_y_offset+(topToDown ? 1:-1);
+                        if (finished_lines) begin
                             op_ram_enable_read <= 0;
                             state <= READY_STATE;
                         end

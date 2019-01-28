@@ -60,8 +60,8 @@ module EPP(
         if (do_blit & cnt == 444000) begin
             registers[0] <= 0;
             registers[2] <= 0;
-            registers[4] <= 100;
-            registers[6] <= 100;
+            registers[4] <= 40;
+            registers[6] <= 40;
             registers[8] <= 100;
             registers[10] <= 100;
             start_blit <= 1;
