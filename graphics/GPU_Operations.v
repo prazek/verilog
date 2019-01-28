@@ -20,7 +20,9 @@ module GPU_Operations#(parameter WIDTH = 320,
     output reg       op_ram_enable_read,
     output reg       op_ram_enable_write,
     output reg       op_ram_write_value,
-    output reg       error
+    output           busy,
+    output reg       error,
+    output reg [7:0] debug_cnt = 0
 );
 
     initial op_ram_enable_write = 0;
@@ -32,6 +34,7 @@ module GPU_Operations#(parameter WIDTH = 320,
     localparam BLIT_IN_PROGESS = 2;
 
     reg [4:0] state = READY_STATE;
+    assign busy = state != READY_STATE;
 
         // Copy of input values.
     reg [8:0] opX1;
@@ -75,6 +78,7 @@ module GPU_Operations#(parameter WIDTH = 320,
                         blit_x_offset <= 0;
                         blit_y_offset <= 0;
                         op_ram_enable_read <= 1;
+                        debug_cnt <= 0;
                     end
                 end
             end
@@ -91,27 +95,28 @@ module GPU_Operations#(parameter WIDTH = 320,
             end
             BLIT_IN_PROGESS: begin
                 if (op_ram_enable_read) begin
-                    // Has read bit from first square, now save it to second one
                     op_ram_enable_read <= 0;
+                    // Has read bit from first square, now save it to second one
                     op_ram_enable_write <= 1;
-                    op_ram_write_value <= 1; //_op_ram_value;
-                    op_x <= opX2 + blit_x_offset;
-                    op_y <= opY2 + blit_y_offset;
+                    op_ram_write_value <= _op_ram_value;
+                    op_x <= opX2+blit_x_offset;
+                    op_y <= opY2+blit_y_offset;
+                    debug_cnt <= debug_cnt+1;
                 end else begin
                     // Wrote last bit, now read next one
                     op_ram_enable_read <= 1;
                     op_ram_enable_write <= 0;
 
-                    blit_x_offset <= blit_x_offset + 1;
-                    op_x <= opX1 + blit_x_offset + 1;
-                    op_y <= opY1 + blit_y_offset;
-                    if (blit_x_offset + 1 > op_blit_x_width) begin
+                    op_y <= opY1+blit_y_offset;
+                    blit_x_offset <= blit_x_offset+1;
+                    op_x <= opX1+blit_x_offset+1;
+                    if (blit_x_offset+1 > op_blit_x_width) begin
                         blit_x_offset <= 0;
-                        op_x <= opX1 + 0;
-
-                        blit_y_offset <= blit_y_offset + 1;
-                        op_y <= opY1 + blit_y_offset + 1;
-                        if (blit_y_offset + 1 > op_blit_y_height) begin
+                        op_x <= opX1;
+                        debug_cnt <= op_blit_x_width;
+                        blit_y_offset <= blit_y_offset+1;
+                        op_y <= opY1+blit_y_offset+1;
+                        if (blit_y_offset+1 > op_blit_y_height) begin
                             op_ram_enable_read <= 0;
                             state <= READY_STATE;
                         end

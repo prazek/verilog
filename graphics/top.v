@@ -2,7 +2,6 @@
 
 module top(
     input            CLK,             // board clock: 100 MHz on Arty/Basys3/Nexys
-    input      [3:0] btn,         // reset button
     input            EppAstb,
     input            EppDstb,
     input            EppWR,
@@ -24,12 +23,12 @@ module top(
     wire [7:0] Y1;
     wire [8:0] X2;
     wire [7:0] Y2;
-    wire error;
     wire [8:0] op_width;
     wire [7:0] op_height;
+    wire error;
 
-    assign Led = {8{error}};
 
+   // assign Led = {8{error}};
     GraphicsCard graphics(
         .clk       (CLK),
         .reset     (0),
@@ -49,7 +48,8 @@ module top(
         .VGA_R     (VGA_R),
         .VGA_G     (VGA_G),
         .VGA_B     (VGA_B),
-        .error(error)
+        .error(error),
+        .debug_cnt(Led)
     );
 
 
@@ -64,6 +64,8 @@ module top(
         .Y1        (Y1),
         .X2        (X2),
         .Y2        (Y2),
+        .op_width(op_width),
+        .op_height(op_height),
         .start_fill(start_fill),
         .fill_value(fill_value),
         .start_blit(start_blit)

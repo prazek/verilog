@@ -1,5 +1,6 @@
 `default_nettype none
 
+// Code based on https://timetoexplore.net/blog/arty-fpga-vga-verilog-01
 module vga640x400(
     input wire i_clk,           // base clock
     input wire i_pix_stb,       // pixel clock strobe

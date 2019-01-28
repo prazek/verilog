@@ -19,7 +19,9 @@ module GraphicsCard(
     output wire [2:0] VGA_R,    // 3-bit VGA red output
     output wire [2:0] VGA_G,    // 3-bit VGA green output
     output wire [2:1] VGA_B,     // 2-bit VGA blue output
-    output            error
+    output            busy,
+    output            error,
+    output      [7:0] debug_cnt
 );
 
     wire       vclk;
@@ -38,17 +40,15 @@ module GraphicsCard(
     wire [9:0] display_x;  // current pixel x position: 10-bit value: 0-1023
     wire [8:0] display_y;  // current pixel y position:  9-bit value: 0-511
     wire       out_active;
-    wire       out_blanking;
     vga640x400 display(
-        .i_clk     (clk),
-        .i_pix_stb (vclk),
-        .i_rst     (reset),
-        .o_hs      (hsync),
-        .o_vs      (vsync),
-        .o_x       (display_x),
-        .o_y       (display_y),
-        .o_blanking(out_blanking),
-        .o_active  (out_active)
+        .i_clk    (clk),
+        .i_pix_stb(vclk),
+        .i_rst    (reset),
+        .o_hs     (hsync),
+        .o_vs     (vsync),
+        .o_x      (display_x),
+        .o_y      (display_y),
+        .o_active (out_active)
     );
 
     wire       pixel_value;
@@ -66,22 +66,24 @@ module GraphicsCard(
 
     GPU_Operations ops(
         .clk                (clk),
-        ._X1                 (X1),
-        ._Y1                 (Y1),
-        ._X2                 (X2),
-        ._Y2                 (Y2),
-        ._start_fill         (start_fill),
-        ._fill_value         (fill_value),
-        ._start_blit         (start_blit),
-        ._blit_x_width       (blit_x_width),
-        ._blit_y_height      (blit_y_height),
-        ._op_ram_value       (op_ram_value),
+        ._X1                (X1),
+        ._Y1                (Y1),
+        ._X2                (X2),
+        ._Y2                (Y2),
+        ._start_fill        (start_fill),
+        ._fill_value        (fill_value),
+        ._start_blit        (start_blit),
+        ._blit_x_width      (blit_x_width),
+        ._blit_y_height     (blit_y_height),
+        ._op_ram_value      (op_ram_value),
         // outs
         .op_x               (op_x),
         .op_y               (op_y),
         .op_ram_enable_read (op_enable_read),
         .op_ram_enable_write(op_ram_enable_write),
         .op_ram_write_value (op_ram_write_value),
+        .busy               (busy),
+        .debug_cnt          (debug_cnt),
         .error              (error)
     );
 

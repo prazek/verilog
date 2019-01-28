@@ -32,7 +32,7 @@ module EPP(
 
     reg        do_op = 1;
     reg         do_blit = 1;
-    reg [11:0] cnt = 0;
+    reg [31:0] cnt = 0;
     always @(posedge clk) begin
 
         start_blit <= 0;
@@ -42,19 +42,28 @@ module EPP(
         if (do_op & cnt == 400) begin
             registers[0] <= 20;
             registers[2] <= 40;
-            registers[4] <= 90;
+            registers[4] <= 100;
             registers[6] <= 100;
+            start_fill <= 1;
+            fill_value <= 1;
+        end
+        if (do_op & cnt == 30000) begin
+            registers[0] <= 0;
+            registers[2] <= 0;
+            registers[4] <= 30;
+            registers[6] <= 50;
             start_fill <= 1;
             fill_value <= 1;
             do_op <= 0;
         end
-        if (do_blit & cnt == 800) begin
-            registers[0] <= 75;
-            registers[2] <= 85;
-            registers[4] <= 150;
-            registers[6] <= 160;
-            registers[8] <= 30;
-            registers[10] <= 45;
+
+        if (do_blit & cnt == 444000) begin
+            registers[0] <= 0;
+            registers[2] <= 0;
+            registers[4] <= 100;
+            registers[6] <= 100;
+            registers[8] <= 100;
+            registers[10] <= 100;
             start_blit <= 1;
             do_blit <= 0;
         end
