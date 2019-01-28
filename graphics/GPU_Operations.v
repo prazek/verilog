@@ -46,6 +46,7 @@ module GPU_Operations#(parameter WIDTH = 320,
 
     reg [8:0] blit_x_offset;
     reg [7:0] blit_y_offset;
+    reg       wait_for_read = 0;
 
     always @(posedge clk) begin
         case (state)
@@ -78,6 +79,7 @@ module GPU_Operations#(parameter WIDTH = 320,
                         blit_x_offset <= 0;
                         blit_y_offset <= 0;
                         op_ram_enable_read <= 1;
+                        wait_for_read <= 1;
                         debug_cnt <= 0;
                     end
                 end
@@ -95,16 +97,20 @@ module GPU_Operations#(parameter WIDTH = 320,
             end
             BLIT_IN_PROGESS: begin
                 if (op_ram_enable_read) begin
-                    op_ram_enable_read <= 0;
-                    // Has read bit from first square, now save it to second one
-                    op_ram_enable_write <= 1;
-                    op_ram_write_value <= _op_ram_value;
-                    op_x <= opX2+blit_x_offset;
-                    op_y <= opY2+blit_y_offset;
-                    debug_cnt <= debug_cnt+1;
+                    if (wait_for_read)
+                        wait_for_read <= 0;
+                    else begin
+                        op_ram_enable_read <= 0;
+                        // Has read bit from first square, now save it to second one
+                        op_ram_enable_write <= 1;
+                        op_ram_write_value <= _op_ram_value;
+                        op_x <= opX2+blit_x_offset;
+                        op_y <= opY2+blit_y_offset;
+                    end
                 end else begin
                     // Wrote last bit, now read next one
                     op_ram_enable_read <= 1;
+                    wait_for_read <= 1;
                     op_ram_enable_write <= 0;
 
                     op_y <= opY1+blit_y_offset;
@@ -113,7 +119,7 @@ module GPU_Operations#(parameter WIDTH = 320,
                     if (blit_x_offset+1 > op_blit_x_width) begin
                         blit_x_offset <= 0;
                         op_x <= opX1;
-                        debug_cnt <= op_blit_x_width;
+
                         blit_y_offset <= blit_y_offset+1;
                         op_y <= opY1+blit_y_offset+1;
                         if (blit_y_offset+1 > op_blit_y_height) begin
