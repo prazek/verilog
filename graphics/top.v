@@ -16,15 +16,19 @@ module top(
     output     [2:1] VGA_B,     // 2-bit VGA blue output
     output     [7:0] Led
 );
-    assign Led = 0;
 
     wire        start_fill;
+    wire        start_blit;
     wire        fill_value;
-    wire [15:0] X1;
-    wire [15:0] Y1;
-    wire [15:0] X2;
-    wire [15:0] Y2;
+    wire [8:0] X1;
+    wire [7:0] Y1;
+    wire [8:0] X2;
+    wire [7:0] Y2;
+    wire error;
+    wire [8:0] op_width;
+    wire [7:0] op_height;
 
+    assign Led = {8{error}};
 
     GraphicsCard graphics(
         .clk       (CLK),
@@ -36,12 +40,16 @@ module top(
         .Y2        (Y2),
         .start_fill(start_fill),
         .fill_value(fill_value),
+        .start_blit(start_blit),
+        .blit_x_width(op_width),
+        .blit_y_height(op_height),
         // out
         .hsync     (HSYNC),
         .vsync     (VSYNC),
         .VGA_R     (VGA_R),
         .VGA_G     (VGA_G),
-        .VGA_B     (VGA_B)
+        .VGA_B     (VGA_B),
+        .error(error)
     );
 
 
@@ -57,7 +65,8 @@ module top(
         .X2        (X2),
         .Y2        (Y2),
         .start_fill(start_fill),
-        .fill_value(fill_value)
+        .fill_value(fill_value),
+        .start_blit(start_blit)
     );
 
 

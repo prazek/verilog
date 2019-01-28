@@ -47,11 +47,11 @@ module GPU_RAM#(parameter WIDTH = 320,
                 .DIA  (0), // Port A 1-bit Data Input
                 .DIB  (write_value), // Port B 1-bit Data Input
                 .ENA  (enable_read1), // Port A RAM Enable Input
-                .ENB  (enable_read2 | (enable_write2 & which_block2 == i)), // Port B RAM Enable Input
+                .ENB  (enable_read2 | enable_write2), // Port B RAM Enable Input
                 //.SSRA (SSRA), // Port A Synchronous Set/Reset Input
                 //.SSRB (1), // Port B Synchronous Set/Reset Input
                 .WEA  (0), // Port A Write Enable Input
-                .WEB  (enable_write2 & which_block2 == i) // Port B Write Enable Input
+                .WEB  (enable_write2 & (which_block2 == i)) // Port B Write Enable Input
             );
         end
     endgenerate

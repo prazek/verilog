@@ -9,12 +9,12 @@ module EPP(
     inout wire [7:0]  EppDB,
 
 
-    output     [15:0] X1,
-    output     [15:0] Y1,
-    output     [15:0] X2,
-    output     [15:0] Y2,
-    output     [15:0] op_width,
-    output     [15:0] op_height,
+    output     [8:0] X1,
+    output     [7:0] Y1,
+    output     [8:0] X2,
+    output     [7:0] Y2,
+    output     [8:0] op_width,
+    output     [7:0] op_height,
     output reg        start_blit,
     output reg        start_fill,
     output reg        fill_value
@@ -24,14 +24,15 @@ module EPP(
     reg [7:0]  registers [16:0];
 
     assign X1 = {registers[1], registers[0]};
-    assign Y1 = {registers[3], registers[2]};
+    assign Y1 = registers[2];
     assign X2 = {registers[5], registers[4]};
-    assign Y2 = {registers[7], registers[6]};
+    assign Y2 = registers[6];
     assign op_width = {registers[9], registers[8]};
-    assign op_height = {registers[11], registers[10]};
+    assign op_height = registers[10];
 
     reg        do_op = 1;
-    reg [10:0] cnt = 0;
+    reg         do_blit = 1;
+    reg [11:0] cnt = 0;
     always @(posedge clk) begin
 
         start_blit <= 0;
@@ -41,13 +42,22 @@ module EPP(
         if (do_op & cnt == 400) begin
             registers[0] <= 20;
             registers[2] <= 40;
-            registers[4] <= 150;
-            registers[6] <= 160;
+            registers[4] <= 90;
+            registers[6] <= 100;
             start_fill <= 1;
             fill_value <= 1;
             do_op <= 0;
         end
-
+        if (do_blit & cnt == 800) begin
+            registers[0] <= 75;
+            registers[2] <= 85;
+            registers[4] <= 150;
+            registers[6] <= 160;
+            registers[8] <= 30;
+            registers[10] <= 45;
+            start_blit <= 1;
+            do_blit <= 0;
+        end
 
         if (EppAstb == 0)
             address <= EppDB;

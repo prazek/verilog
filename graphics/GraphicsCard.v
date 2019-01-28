@@ -10,12 +10,16 @@ module GraphicsCard(
     input       [7:0] Y2,
     input             start_fill,
     input             fill_value,
+    input             start_blit,
+    input       [8:0] blit_x_width,
+    input       [7:0] blit_y_height,
     // VGA out
     output wire       hsync,    // horizontal sync output
     output wire       vsync,    // vertical sync output
     output wire [2:0] VGA_R,    // 3-bit VGA red output
     output wire [2:0] VGA_G,    // 3-bit VGA green output
-    output wire [2:1] VGA_B     // 2-bit VGA blue output
+    output wire [2:1] VGA_B,     // 2-bit VGA blue output
+    output            error
 );
 
     wire       vclk;
@@ -55,22 +59,30 @@ module GraphicsCard(
 
     wire [8:0] op_x;
     wire [7:0] op_y;
-    wire op_ram_enable_write;
-    wire op_ram_write_value;
+    wire       op_ram_enable_write;
+    wire       op_ram_write_value;
+    wire       op_enable_read;
+    wire       op_ram_value;
 
     GPU_Operations ops(
-        .clk(clk),
-        .X1(X1),
-        .Y1(Y1),
-        .X2(X2),
-        .Y2(Y2),
-        .start_fill(start_fill),
-        .fill_value(fill_value),
+        .clk                (clk),
+        ._X1                 (X1),
+        ._Y1                 (Y1),
+        ._X2                 (X2),
+        ._Y2                 (Y2),
+        ._start_fill         (start_fill),
+        ._fill_value         (fill_value),
+        ._start_blit         (start_blit),
+        ._blit_x_width       (blit_x_width),
+        ._blit_y_height      (blit_y_height),
+        ._op_ram_value       (op_ram_value),
         // outs
-        .op_x(op_x),
-        .op_y(op_y),
+        .op_x               (op_x),
+        .op_y               (op_y),
+        .op_ram_enable_read (op_enable_read),
         .op_ram_enable_write(op_ram_enable_write),
-        .op_ram_write_value(op_ram_write_value)
+        .op_ram_write_value (op_ram_write_value),
+        .error              (error)
     );
 
     GPU_RAM gpu_ram(
@@ -81,7 +93,8 @@ module GraphicsCard(
         .read_value1  (pixel_value),
         .x2           (op_x),
         .y2           (op_y),
-        .enable_read2 (0),
+        .enable_read2 (op_enable_read),
+        .read_value2  (op_ram_value),
         .enable_write2(op_ram_enable_write),
         .write_value  (op_ram_write_value)
     );
@@ -90,7 +103,5 @@ module GraphicsCard(
     assign VGA_R[2:0] = {3{output_value}};
     assign VGA_G[2:0] = {3{output_value}};
     assign VGA_B[2:1] = {2{output_value}};
-
-
 
 endmodule
