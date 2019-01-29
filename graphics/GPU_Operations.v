@@ -76,6 +76,7 @@ module GPU_Operations#(parameter WIDTH = 320,
                         op_y <= _Y1;
                         op_ram_write_value <= _fill_value;
                         op_ram_enable_write <= 1;
+                        debug_cnt <= debug_cnt | 1;
                     end else if (_start_blit) begin
                         state <= BLIT_IN_PROGESS;
                         op_x <= _X1;
@@ -84,7 +85,7 @@ module GPU_Operations#(parameter WIDTH = 320,
                         blit_y_offset <= topToDown ? 0:_blit_y_height-1;
                         op_ram_enable_read <= 1;
                         wait_for_read <= 1;
-                        debug_cnt <= leftToRight << 1 | topToDown;
+                        debug_cnt <= debug_cnt | 2;
                     end
                 end
             end
