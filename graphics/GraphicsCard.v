@@ -11,16 +11,24 @@ module GraphicsCard(
     input             start_fill,
     input             fill_value,
     input             start_blit,
-    input       [8:0] blit_x_width,
-    input       [7:0] blit_y_height,
+    input       [8:0] op_x_width,
+    input       [7:0] op_y_height,
+    input             start_ram_read,
+    input             start_ram_write,
+    input       [7:0] write_ram_byte,
+
     // VGA out
     output wire       hsync,    // horizontal sync output
     output wire       vsync,    // vertical sync output
     output wire [2:0] VGA_R,    // 3-bit VGA red output
     output wire [2:0] VGA_G,    // 3-bit VGA green output
     output wire [2:1] VGA_B,     // 2-bit VGA blue output
+    // ops out
     output            busy,
     output            error,
+    output            ram_byte_ready,
+    output      [7:0] ram_byte,
+
     output      [7:0] debug_cnt
 );
 
@@ -57,8 +65,8 @@ module GraphicsCard(
 
 
 
-    wire [8:0] op_x;
-    wire [7:0] op_y;
+    wire [8:0] ram_x;
+    wire [7:0] ram_y;
     wire       op_ram_enable_write;
     wire       op_ram_write_value;
     wire       op_enable_read;
@@ -73,18 +81,23 @@ module GraphicsCard(
         ._start_fill        (start_fill),
         ._fill_value        (fill_value),
         ._start_blit        (start_blit),
-        ._blit_x_width      (blit_x_width),
-        ._blit_y_height     (blit_y_height),
+        ._op_x_width        (op_x_width),
+        ._op_y_height       (op_y_height),
         ._op_ram_value      (op_ram_value),
+        ._start_ram_read    (start_ram_read),
+        ._start_ram_write   (start_ram_write),
+        ._write_ram_byte    (write_ram_byte),
         // outs
-        .op_x               (op_x),
-        .op_y               (op_y),
+        .ram_x              (ram_x),
+        .ram_y              (ram_y),
         .op_ram_enable_read (op_enable_read),
         .op_ram_enable_write(op_ram_enable_write),
         .op_ram_write_value (op_ram_write_value),
         .busy               (busy),
         .debug_cnt          (debug_cnt),
-        .error              (error)
+        .error              (error),
+        .ram_byte_ready     (ram_byte_ready),
+        .ram_byte           (ram_byte)
     );
 
     GPU_RAM gpu_ram(
@@ -93,8 +106,8 @@ module GraphicsCard(
         .y1           (real_disp_y),
         .enable_read1 (out_active),
         .read_value1  (pixel_value),
-        .x2           (op_x),
-        .y2           (op_y),
+        .x2           (ram_x),
+        .y2           (ram_y),
         .enable_read2 (op_enable_read),
         .read_value2  (op_ram_value),
         .enable_write2(op_ram_enable_write),
