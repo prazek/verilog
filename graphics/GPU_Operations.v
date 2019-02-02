@@ -90,8 +90,8 @@ module GPU_Operations#(parameter WIDTH = 320,
                         debug_cnt <= debug_cnt | 1;
                     end else if (_start_blit) begin
                         state <= BLIT_IN_PROGESS;
-                        ram_x <= _X1;
-                        ram_y <= _Y1;
+                        ram_x <= _X2;
+                        ram_y <= _Y2;
                         blit_x_offset <= leftToRight ? 0:_op_x_width-1;
                         blit_y_offset <= topToDown ? 0:_op_y_height-1;
                         op_ram_enable_read <= 1;
@@ -133,8 +133,8 @@ module GPU_Operations#(parameter WIDTH = 320,
                         // Has read bit from first square, now save it to second one
                         op_ram_enable_write <= 1;
                         op_ram_write_value <= _op_ram_value;
-                        ram_x <= opX2+blit_x_offset;
-                        ram_y <= opY2+blit_y_offset;
+                        ram_x <= opX1+blit_x_offset;
+                        ram_y <= opY1+blit_y_offset;
                     end
                 end else begin
                     // Wrote last bit, now read next one
@@ -142,15 +142,15 @@ module GPU_Operations#(parameter WIDTH = 320,
                     wait_for_read <= 1;
                     op_ram_enable_write <= 0;
 
-                    ram_y <= opY1+blit_y_offset;
+                    ram_y <= opY2+blit_y_offset;
                     blit_x_offset <= blit_x_offset+(leftToRight ? 1:-1);
-                    ram_x <= opX1+blit_x_offset+(leftToRight ? 1:-1);
+                    ram_x <= opX2+blit_x_offset+(leftToRight ? 1:-1);
                     if (change_line) begin
                         blit_x_offset <= leftToRight ? 0:op_x_width-1;
-                        ram_x <= opX1+leftToRight ? 0:op_x_width-1;
+                        ram_x <= opX2+leftToRight ? 0:op_x_width-1;
 
                         blit_y_offset <= blit_y_offset+(topToDown ? 1:-1);
-                        ram_y <= opY1+blit_y_offset+(topToDown ? 1:-1);
+                        ram_y <= opY2+blit_y_offset+(topToDown ? 1:-1);
                         if (finished_lines) begin
                             op_ram_enable_read <= 0;
                             state <= READY_STATE;
