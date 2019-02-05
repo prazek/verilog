@@ -26,8 +26,7 @@ module GPU_Operations#(parameter WIDTH = 320,
     output           busy,
     output reg       error,
     output reg [7:0] ram_byte,
-    output reg       ram_byte_ready,
-    output reg [7:0] debug_cnt = 0
+    output reg       ram_byte_ready
 );
 
     initial op_ram_enable_write = 0;
@@ -51,16 +50,16 @@ module GPU_Operations#(parameter WIDTH = 320,
     reg [7:0]  opY2;
     reg [8:0]  op_x_width;
     reg [7:0]  op_y_height;
-    reg [7:0]  op_write_ram_byte;
+    reg [7:1]  op_write_ram_byte;
     wire [3:0] which_bit_of_ram = ram_x-opX1;
 
     reg [8:0]  blit_x_offset;
     reg [7:0]  blit_y_offset;
     reg        wait_for_read = 0;
-    wire       leftToRight = (_X1 > _X2);
-    wire       topToDown = (_Y1 > _Y2);
-    wire       change_line = leftToRight ? (blit_x_offset+1 == op_x_width):(blit_x_offset == 0);
-    wire       finished_lines = topToDown ? (blit_y_offset+1 == op_y_height):(blit_y_offset == 0);
+    wire       leftToRight = !(_X1 > _X2);
+    wire       topToDown = !(_Y1 > _Y2);
+    wire       change_line = leftToRight ? (blit_x_offset+1 >= op_x_width):(blit_x_offset == 0);
+    wire       finished_lines = topToDown ? (blit_y_offset+1 >= op_y_height):(blit_y_offset == 0);
 
     always @(posedge clk) begin
         case (state)
@@ -87,7 +86,6 @@ module GPU_Operations#(parameter WIDTH = 320,
                         ram_y <= _Y1;
                         op_ram_write_value <= _fill_value;
                         op_ram_enable_write <= 1;
-                        debug_cnt <= debug_cnt | 1;
                     end else if (_start_blit) begin
                         state <= BLIT_IN_PROGESS;
                         ram_x <= _X2;
@@ -96,7 +94,6 @@ module GPU_Operations#(parameter WIDTH = 320,
                         blit_y_offset <= topToDown ? 0:_op_y_height-1;
                         op_ram_enable_read <= 1;
                         wait_for_read <= 1;
-                        debug_cnt <= debug_cnt | 2;
                     end
                 end else if (_start_ram_read) begin
                     state <= RAM_READING_IN_PROGRESS;
@@ -108,17 +105,17 @@ module GPU_Operations#(parameter WIDTH = 320,
                     state <= RAM_WRITING_IN_PROGRESS;
                     ram_x <= _X1;
                     ram_y <= _Y1;
-                    op_write_ram_byte <= _write_ram_byte;
+                    op_write_ram_byte <= _write_ram_byte[7:1];
                     op_ram_write_value <= _write_ram_byte[0];
                     op_ram_enable_write <= 1;
                 end
             end
             FILL_IN_PROGRESS: begin
                 ram_x <= ram_x+1;
-                if (ram_x+1 > opX1+op_x_width) begin
+                if (ram_x-opX1+1 >= op_x_width) begin
                     ram_x <= opX1;
                     ram_y <= ram_y+1;
-                    if (ram_y+1 > opY1+op_y_height) begin
+                    if (ram_y-opY1+1 >= op_y_height) begin
                         op_ram_enable_write <= 0;
                         state <= READY_STATE;
                     end
@@ -177,9 +174,9 @@ module GPU_Operations#(parameter WIDTH = 320,
                 end
             end
             RAM_WRITING_IN_PROGRESS: begin
-                ram_x <= ram_x + 1;
-                op_ram_write_value <= op_write_ram_byte[which_bit_of_ram + 1];
-                if (which_bit_of_ram + 1 == 8) begin
+                ram_x <= ram_x+1;
+                op_ram_write_value <= op_write_ram_byte[which_bit_of_ram+1];
+                if (which_bit_of_ram+1 == 8) begin
                     state <= READY_STATE;
                     op_ram_enable_write <= 0;
                 end

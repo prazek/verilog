@@ -1,6 +1,9 @@
 `default_nettype none
 
-module GraphicsCard(
+module GraphicsCard#(parameter WIDTH = 320,
+                     parameter HEIGHT = 200)
+(
+
     input wire        clk,      // board clock: 100 MHz on Arty/Basys3/Nexys
     input wire        reset,    // reset button
     // Operations
@@ -28,8 +31,7 @@ module GraphicsCard(
     output            error,
     output            ram_byte_ready,
     output      [7:0] ram_byte,
-
-    output      [7:0] debug_cnt
+    output reg [7:0]  debug
 );
 
     wire       vclk;
@@ -59,11 +61,29 @@ module GraphicsCard(
         .o_active (out_active)
     );
 
+    //wire       is_last_column = display_x + 1 >= WIDTH*2;
+    wire [9:0] next_x = display_x & 1 ? display_x+1:display_x;
+
+
+    wire [8:0] read_x = out_active ? next_x >> 1:0;
+    wire [7:0] read_y = display_y >> 1;
+
     wire       pixel_value;
-    wire [8:0] real_disp_x = display_x >> 1;       // 0 - 511
-    wire [7:0] real_disp_y = display_y >> 1;       // 0 - 255
 
-
+    always @(posedge clk) begin
+        if (display_x == 639) begin
+            debug[0] <= out_active;
+            //debug <= read_x;
+        end
+        if (display_x == 640) begin
+            debug[1] <= 1;
+            debug[2] <= out_active;
+        end
+        if (display_x == 0) begin
+            debug[3] <= 1;
+            debug[4] <= out_active;
+        end
+    end
 
     wire [8:0] ram_x;
     wire [7:0] ram_y;
@@ -72,7 +92,24 @@ module GraphicsCard(
     wire       op_enable_read;
     wire       op_ram_value;
 
-    GPU_Operations ops(
+    GPU_RAM#(.WIDTH(WIDTH), .HEIGHT(HEIGHT))
+    gpu_ram(
+        .clk          (vclk),
+        .x1           (read_x),
+        .y1           (read_y),
+        .enable_read1 (1),
+        .read_value1  (pixel_value),
+        .clk2         (clk),
+        .x2           (ram_x),
+        .y2           (ram_y),
+        .enable_read2 (op_enable_read),
+        .read_value2  (op_ram_value),
+        .enable_write2(op_ram_enable_write),
+        .write_value  (op_ram_write_value)
+    );
+
+    GPU_Operations#(.HEIGHT(HEIGHT), .WIDTH(WIDTH))
+    ops(
         .clk                (clk),
         ._X1                (X1),
         ._Y1                (Y1),
@@ -94,25 +131,11 @@ module GraphicsCard(
         .op_ram_enable_write(op_ram_enable_write),
         .op_ram_write_value (op_ram_write_value),
         .busy               (busy),
-        .debug_cnt          (debug_cnt),
         .error              (error),
         .ram_byte_ready     (ram_byte_ready),
         .ram_byte           (ram_byte)
     );
 
-    GPU_RAM gpu_ram(
-        .clk          (clk),
-        .x1           (real_disp_x),
-        .y1           (real_disp_y),
-        .enable_read1 (out_active),
-        .read_value1  (pixel_value),
-        .x2           (ram_x),
-        .y2           (ram_y),
-        .enable_read2 (op_enable_read),
-        .read_value2  (op_ram_value),
-        .enable_write2(op_ram_enable_write),
-        .write_value  (op_ram_write_value)
-    );
 
     wire       output_value = pixel_value & out_active;
     assign VGA_R[2:0] = {3{output_value}};

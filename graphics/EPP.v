@@ -21,8 +21,6 @@ module EPP(
     output reg       start_write_ram,
     output reg [7:0] write_ram_byte,
 
-    output reg [7:0] debug = 128,
-
     input            status,
     input            ram_byte_ready,
     input      [7:0] ram_byte
@@ -104,7 +102,6 @@ module EPP(
                 writeEppDB <= status;
             end else begin // Invalid values
                 EppWait <= 0;
-                debug <= debug | 16;
             end
         end
     end
