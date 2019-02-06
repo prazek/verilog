@@ -1,0 +1,5 @@
+verilog work "vga.v"
+verilog work "EPP.v"
+verilog work "top.v"
+verilog work "tetris_engine.v"
+verilog work "tetris.v"

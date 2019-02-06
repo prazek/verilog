@@ -1,0 +1,1 @@
+djtgcfg -d Basys2 prog -i 0 -f tetris_par.bit
