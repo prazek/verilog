@@ -1,26 +1,30 @@
 `default_nettype none
 
 module tetris_engine(
-    input            clk,
-    input            reset,
-    input            next_fall,
+    input             clk,
+    input             reset_game,
+    input             next_fall,
     // User inputs
-    input            move_piece_right,
-    input            move_piece_left,
+    input             move_piece_right,
+    input             move_piece_left,
+    input             rotate_right,
+    input             rotate_left,
 
-    input  [11:0]    display_query_pos,
+    input  [11:0]     display_query_pos,
 
-    output reg [2:0] next_piece = 1,
-    output [2:0]     display_query_res,
-    output           game_over,
-    output reg [7:0] debug = 0
+    output reg [2:0]  next_piece = 1,
+    output [2:0]      display_query_res,
+    output reg        game_over = 0,
+    output reg [19:0] which_lines_cleared = 0,
+    output reg [20:0] game_lines_cleared = 0,
+    output reg [7:0]  debug = 0
 );
     localparam GameWidth = 10;
     localparam GameHeight = 20;
     localparam NumPieces = 7;
         // Numerate pieces from 1 to 8
-    wire [3:0] PiecesPos_X[4+4*NumPieces-1:4];
-    wire [4:0] PiecesPos_Y[4+4*NumPieces-1:4];
+    wire        [3:0] PiecesPos_X[4+4*NumPieces-1:4];
+    wire        [4:0] PiecesPos_Y[4+4*NumPieces-1:4];
         // Z piece
     assign PiecesPos_X[4] = 5;
     assign PiecesPos_X[5] = 6;
@@ -50,7 +54,7 @@ module tetris_engine(
     assign PiecesPos_X[15] = 6;
 
     assign PiecesPos_Y[12] = 19;
-    assign PiecesPos_Y[13] = 18;
+    assign PiecesPos_Y[13] = 19;
     assign PiecesPos_Y[14] = 18;
     assign PiecesPos_Y[15] = 18;
 
@@ -99,13 +103,13 @@ module tetris_engine(
     assign PiecesPos_Y[31] = 18;
 
 
-    reg        write_ram;
-    reg [2:0]  write_value;
-    reg [11:0] ram_query;
-    wire [3:0] ram_state;
+    reg               write_ram;
+    reg [2:0]         write_value;
+    reg [11:0]        ram_query;
+    wire        [3:0] ram_state;
 
 
-    wire [3:0] display_ram;
+    wire        [3:0] display_ram;
 
 
     RAMB16_S4_S4 gameState(
@@ -126,13 +130,29 @@ module tetris_engine(
     );
 
 
-    reg [3:0]  current_x [3:0];
-    reg [4:0]  current_y [3:0];
-    reg [2:0]  current_piece = 1;
-    wire [7:0] piece_pos[3:0];
-    wire [7:0] pos_down[3:0];
-    wire [7:0] pos_right[3:0];
-    wire [7:0] pos_left[3:0];
+    reg signed [4:0]  current_x [3:0];
+    reg signed [5:0]  current_y [3:0];
+    wire signed [2:0] related_pos_x[3:0];
+    wire signed [2:0] related_pos_y[3:0];
+    reg               which_move = 0; // left, right
+    wire signed [5:0] move_x[3:0];
+    wire signed [6:0] move_y[3:0];
+
+
+    wire signed [5:0] rot_right_x[3:0];
+    wire signed [6:0] rot_right_y[3:0];
+    wire signed [5:0] rot_left_x[3:0];
+    wire signed [6:0] rot_left_y[3:0];
+    reg               which_rot = 0; // left, right
+    wire signed [5:0] rot_x[3:0];
+    wire signed [6:0] rot_y[3:0];
+
+
+    reg [2:0]         current_piece = 1;
+    wire signed [8:0] piece_pos[3:0];
+    wire signed [8:0] pos_down[3:0];
+    wire signed [8:0] pos_move[3:0];
+    wire signed [8:0] pos_rot[3:0];
 
     assign display_query_res = (display_query_pos == piece_pos[0]
         || display_query_pos == piece_pos[1]
@@ -144,8 +164,24 @@ module tetris_engine(
         for (i = 0; i < 4; i = i+1) begin : pos
             assign piece_pos[i] = current_y[i]*GameWidth+current_x[i];
             assign pos_down[i] = (current_y[i]-1)*GameWidth+current_x[i];
-            assign pos_right[i] = (current_y[i])*GameWidth+current_x[i]+1;
-            assign pos_left[i] = (current_y[i])*GameWidth+current_x[i]-1;
+
+            assign move_x[i] = which_move == 0 ? current_x[i]-1:current_x[i]+1;
+            assign move_y[i] = current_y[i];
+            assign pos_move[i] = move_y[i]*GameWidth+move_x[i];
+
+            assign related_pos_y[i] = current_y[i]-current_y[3];
+
+            assign related_pos_x[i] = current_x[i]-current_x[3];
+
+            assign rot_right_x[i] = current_x[3]+related_pos_y[i];
+            assign rot_right_y[i] = current_y[3]-related_pos_x[i];
+
+            assign rot_left_x[i] = current_x[3]-related_pos_y[i];
+            assign rot_left_y[i] = current_y[3]+related_pos_x[i];
+
+            assign rot_x[i] = which_rot == 0 ? rot_left_x[i]:rot_right_x[i];
+            assign rot_y[i] = which_rot == 0 ? rot_left_y[i]:rot_right_y[i];
+            assign pos_rot[i] = (rot_y[i]*GameWidth)+rot_x[i];
         end
     endgenerate
 
@@ -154,37 +190,61 @@ module tetris_engine(
     localparam InReseting = 1;
     localparam CheckingWhatsDown = 2;
     localparam Falling = 3;
-    localparam CheckingWhatsRight = 4;
-    localparam MoveRight = 5;
-    localparam WritePiece = 6;
-    localparam SpawningNewPiece = 7;
+    localparam CheckingWhatsMove = 4;
+    localparam Move = 5;
+    localparam CheckingRotation = 6;
+    localparam Rotate = 7;
+    localparam CheckIfCleared = 8;
+    localparam WaitWithClearedLines = 9;
+    localparam CopyingLine = 10;
+    localparam WritePiece = 11;
+    localparam SpawningNewPiece = 12;
+    localparam GameOver = 15;
 
+    reg [1:0]         piece_id = 0;
+    reg [4:0]         state = InReseting;
+    reg               down_clear = 1;
+    reg               waiting_for_read = 0;
+    reg               new_piece = 0;
+    reg               initiate_move = 0;
+    reg               initiate_rot = 0;
+    reg signed [5:0]  checking_x = 0;
+    reg signed [6:0]  checking_y = 0;
+    reg [2:0]         num_lines_cleared = 0;
+    reg signed [5:0]  copying_x = 0;
+    reg signed [6:0]  copying_y = 0;
+    reg               writing_copy = 0;
+    reg               copying_next_line = 0;
 
-    reg [1:0]  piece_id = 0;
-    reg [4:0]  state = InReseting;
-    reg        down_clear = 1;
-    reg        waiting_for_read = 0;
+    localparam ClearedLinesPeriod = 1 << 20;
+    reg [25:0]        waiting_count = 0;
+
 
     always @(posedge clk) begin
         debug[state] <= 1;
         case (state)
             Ready: begin
-                if (reset) begin
+                if (reset_game) begin
                     state <= InReseting;
                     ram_query <= 0;
                     write_ram <= 1;
                     write_value <= 0;
+                    game_over <= 0;
+                    game_lines_cleared <= 0;
                 end else if (next_fall) begin
                     state <= CheckingWhatsDown;
                     piece_id <= 0;
                     ram_query <= pos_down[0];
                     waiting_for_read <= 1;
                     down_clear <= 1;
-                end else if (move_piece_right) begin
-                    state <= CheckingWhatsRight;
-                    piece_id <= 0;
-                    ram_query <= pos_right[0];
-                    waiting_for_read <= 1;
+                end else if (move_piece_left || move_piece_right) begin
+                    which_move <= move_piece_right == 1;
+                    state <= CheckingWhatsMove;
+                    initiate_move <= 1;
+                end else if (rotate_left || rotate_right) begin
+                    which_rot <= rotate_right == 1; // 0 if left, 1 if right
+                    state <= CheckingRotation;
+                    initiate_rot <= 1;
                 end
 
             end
@@ -212,7 +272,6 @@ module tetris_engine(
                     waiting_for_read <= 1;
                     piece_id <= piece_id+1;
                     if (piece_id+1 >= 4) begin
-                        current_piece <= next_piece;
                         state <= Falling;
                     end
                 end
@@ -223,39 +282,84 @@ module tetris_engine(
                     current_y[1] <= current_y[1]-1;
                     current_y[2] <= current_y[2]-1;
                     current_y[3] <= current_y[3]-1;
+                    new_piece <= 0;
                     state <= Ready;
                 end else begin
-                    state <= WritePiece;
-                    piece_id <= 0;
-                    ram_query <= piece_pos[0];
-                    write_ram <= 1;
-                    write_value <= current_piece;
+                    if (new_piece)
+                        state <= GameOver;
+                    else begin
+                        state <= WritePiece;
+                        piece_id <= 0;
+                        ram_query <= piece_pos[0];
+                        write_ram <= 1;
+                        write_value <= current_piece;
+                    end
                 end
 
             end
 
-            CheckingWhatsRight: begin // requires: piece_id, waitint_for_read
-                if (waiting_for_read)
+            CheckingWhatsMove: begin // requires: initiate_move
+                if (initiate_move) begin
+                    initiate_move <= 0;
+                    piece_id <= 0;
+                    ram_query <= pos_move[0];
+                    waiting_for_read <= 1;
+                end if (waiting_for_read)
                     waiting_for_read <= 0;
                 else begin
-                    if (ram_state != 0 || current_x[piece_id] == GameWidth - 1) begin
+                        if (ram_state != 0 || move_x[piece_id] < 0 || move_x[piece_id] >= GameWidth) begin
+                            state <= Ready;
+                        end
+
+                        ram_query <= pos_move[piece_id+1];
+                        waiting_for_read <= 1;
+                        piece_id <= piece_id+1;
+                        if (piece_id+1 >= 4) begin
+                            state <= Move;
+                        end
+                    end
+            end
+            Move: begin
+                current_x[0] <= move_x[0];
+                current_x[1] <= move_x[1];
+                current_x[2] <= move_x[2];
+                current_x[3] <= move_x[3];
+                // TODO if going down.
+                state <= Ready;
+            end
+
+            CheckingRotation: begin // requires: initiate_rot
+                if (initiate_rot) begin
+                    initiate_rot <= 0;
+                    piece_id <= 0;
+                    ram_query <= pos_rot[0];
+                    waiting_for_read <= 1;
+                end else if (waiting_for_read)
+                    waiting_for_read <= 0;
+                else begin
+                    if (ram_state != 0 || rot_x[piece_id] < 0 || rot_x[piece_id] >= GameWidth
+                        || rot_y[piece_id] < 0 || rot_y[piece_id] >= GameHeight) begin
                         state <= Ready;
                     end
 
-                    ram_query <= pos_right[piece_id+1];
+                    ram_query <= pos_rot[piece_id+1];
                     waiting_for_read <= 1;
                     piece_id <= piece_id+1;
                     if (piece_id+1 >= 4) begin
-                        current_piece <= next_piece;
-                        state <= MoveRight;
+                        state <= Rotate;
                     end
                 end
             end
-            MoveRight: begin
-                current_x[0] <= current_x[0] + 1;
-                current_x[1] <= current_x[1] + 1;
-                current_x[2] <= current_x[2] + 1;
-                current_x[3] <= current_x[3] + 1;
+            Rotate: begin
+                current_x[0] <= rot_x[0];
+                current_x[1] <= rot_x[1];
+                current_x[2] <= rot_x[2];
+                current_x[3] <= rot_x[3];
+
+                current_y[0] <= rot_y[0];
+                current_y[1] <= rot_y[1];
+                current_y[2] <= rot_y[2];
+                current_y[3] <= rot_y[3];
                 state <= Ready;
             end
 
@@ -264,24 +368,126 @@ module tetris_engine(
                 ram_query <= piece_pos[piece_id+1];
                 if (piece_id+1 >= 4) begin
                     write_ram <= 0;
-                    state <= SpawningNewPiece;
+                    checking_y <= 0;
+                    checking_x <= 0;
+                    ram_query <= 0;
+                    waiting_for_read <= 1;
+                    num_lines_cleared <= 0;
+                    state <= CheckIfCleared;
                 end
             end
 
-            SpawningNewPiece: begin // requires: piece_id
-                current_x[piece_id] <= PiecesPos_X[next_piece*4+piece_id];
-                current_y[piece_id] <= PiecesPos_Y[next_piece*4+piece_id];
+            CheckIfCleared: begin // requires: waiting_for_read, checking_x, checking_y, ram_query
+                if (checking_y >= GameHeight) begin
+                    state <= WaitWithClearedLines;
+                    waiting_count <= 0;
+                end
+                else if (waiting_for_read)
+                    waiting_for_read <= 0;
+                else if (ram_state == 0) begin // Not cleared
+                    /*if (num_lines_cleared > 0) begin // if need to copy
+                        waiting_for_read <= 1;
+                        copying_x <= 0;
+                        ram_query <= checking_y * GameWidth + 0;
+                        state <= CopyingLine;
+                        writing_copy <= 0;
+                    end else begin */
+                    checking_y <= checking_y+1;
+                    checking_x <= 0;
+                    ram_query <= (checking_y+1)*GameWidth+0;
+                    waiting_for_read <= 1;
+                end else begin // Possibly cleared line
+                    checking_x <= checking_x+1;
+                    waiting_for_read <= 1;
+                    if (checking_x+1 >= GameWidth) begin // Cleared_line
+                        game_lines_cleared <= game_lines_cleared+1;
+                        checking_y <= checking_y+1;
+                        checking_x <= 0;
+                        ram_query <= (checking_y+1)*GameWidth+0;
+                        which_lines_cleared[checking_y] <= 1;
+                    end else begin
+                        ram_query <= checking_y*GameWidth+checking_x+1;
+                    end
+                end
+            end
+            WaitWithClearedLines: begin // waiting_count
+                waiting_count <= waiting_count+1;
+                if (waiting_count > WaitWithClearedLines) begin
+                    num_lines_cleared <= 0;
+                    copying_x <= 0;
+                    copying_y <= 0;
+                    waiting_for_read <= 0;
+                    state <= CopyingLine;
+                    writing_copy <= 0;
+                end
 
-                piece_id <= piece_id+1;
-                if (piece_id+1 >= 4) begin
-                    current_piece <= next_piece;
-                    state <= Ready;
-                    next_piece <= next_piece+1;
-                    if (next_piece+1 > 7)
-                        next_piece <= 1;
+            end
+
+            CopyingLine: begin // requires: num_lines_cleared, checking_y, waiting_for_read, copying_x, writing_copy
+                if (copying_next_line) begin
+                    if (copying_y >= GameHeight) begin
+                        state <= SpawningNewPiece;
+                    end
+                    if (which_lines_cleared[copying_y]) begin // this line was cleared
+                        num_lines_cleared <= num_lines_cleared+1;
+                        copying_y <= copying_y+1;
+                        which_lines_cleared[copying_y] <= 0;
+                    end else if (num_lines_cleared == 0) // This line was not cleared
+                        copying_y <= copying_y+1;
+                    else begin
+                        copying_next_line <= 0;
+                        waiting_for_read <= 1;
+                        copying_x <= 0;
+                        writing_copy <= 0;
+                        ram_query <= checking_y*GameWidth+0;
+                    end
+                end else if (waiting_for_read)
+                    waiting_for_read <= 0;
+                else if (!writing_copy) begin
+                    write_ram <= 1;
+                    write_value <= ram_state;
+                    ram_query <= (checking_y-num_lines_cleared)*GameWidth+copying_x;
+                    writing_copy <= 1;
+                end else begin
+                    write_ram <= 0;
+                    ram_query <= checking_y*GameWidth+copying_x+1;
+                    copying_x <= copying_x+1;
+                    waiting_for_read <= 1;
+                    if (copying_x+1 >= GameWidth) begin // Copied all values.
+                        copying_next_line <= 1;
+                        checking_y <= checking_y+1;
+                        checking_x <= 0;
+                    end
                 end
             end
 
+            SpawningNewPiece: begin
+                current_x[0] <= PiecesPos_X[next_piece*4+0];
+                current_x[1] <= PiecesPos_X[next_piece*4+1];
+                current_x[2] <= PiecesPos_X[next_piece*4+2];
+                current_x[3] <= PiecesPos_X[next_piece*4+3];
+
+                current_y[0] <= PiecesPos_Y[next_piece*4+0];
+                current_y[1] <= PiecesPos_Y[next_piece*4+1];
+                current_y[2] <= PiecesPos_Y[next_piece*4+2];
+                current_y[3] <= PiecesPos_Y[next_piece*4+3];
+
+                current_piece <= next_piece;
+                state <= Ready;
+                next_piece <= next_piece+1;
+                if (next_piece+1 > 7)
+                    next_piece <= 1;
+            end
+            GameOver: begin
+                game_over <= 1;
+                if (reset_game) begin
+                    state <= InReseting;
+                    ram_query <= 0;
+                    write_ram <= 1;
+                    write_value <= 0;
+                    game_over <= 0;
+                end
+            end
         endcase
     end
 

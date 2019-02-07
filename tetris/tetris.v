@@ -2,10 +2,14 @@
 
 module tetris(
     input             clk,
-    input             reset,
+    input             reset_game,
 
     input             move_right,
     input             move_left,
+    input             rotate_right,
+    input             rotate_left,
+
+    output            game_over,
 
     // VGA out
     output wire       hsync,    // horizontal sync output
@@ -23,26 +27,19 @@ module tetris(
     localparam BoardBeginY = 40;
     localparam BoardEndY = BoardBeginY+NumPiecesY*PieceSize;
 
-    wire       vclk;
         // generate a 25 MHz pixel strobe
-    DCM_SP#(
-    .CLKFX_DIVIDE(4),
-    .CLKFX_MULTIPLY(2),
-    .CLKIN_PERIOD(50),
-    .CLK_FEEDBACK("NONE"),
-    .STARTUP_WAIT("TRUE")
-    ) dcm_vclk(
-        .CLKFX(vclk),
-        .CLKIN(clk)
-    );
+    reg [15:0]  cnt;
+    reg         pix_stb;
+    always @(posedge clk)
+        {pix_stb, cnt} <= cnt+16'h4000;  // divide by 4: (2^16)/4 = 0x4000
 
-    wire [9:0] display_x;  // current pixel x position: 10-bit value: 0-1023
-    wire [8:0] display_y;  // current pixel y position:  9-bit value: 0-511
-    wire       out_active;
-    vga640x400 display(
+    wire [9:0]  display_x;  // current pixel x position: 10-bit value: 0-1023
+    wire [8:0]  display_y;  // current pixel y position:  9-bit value: 0-511
+    wire        out_active;
+    vga640x480 display(
         .i_clk    (clk),
-        .i_pix_stb(vclk),
-        .i_rst    (reset),
+        .i_pix_stb(pix_stb),
+        .i_rst    (0),
         .o_hs     (hsync),
         .o_vs     (vsync),
         .o_x      (display_x),
@@ -51,92 +48,86 @@ module tetris(
     );
 
 
-    reg [23:0] count = 1;
-    reg        game_started = 0;
-    reg [24:0] start_game_count = 0;
-    reg [32:0] reset_cnt = 1;
-    wire       game_clock = count == 0;
-    wire       start_game = start_game_count == 0;
-    wire       reset_game = reset_cnt == 0 || (start_game_count == 0 && game_started == 0);
+    // TODO speedup game every line
+    reg [23:0]  count = 1;
+    reg         start_game = 0;
 
+    wire        game_clock = count == 0;
     always @(posedge clk) begin
-        count <= count+1;
-        reset_cnt <= reset_cnt+1;
-        start_game_count <= start_game_count+1;
+        if (start_game)
+            count <= count+1;
+        if (move_right || move_left || rotate_left || rotate_right)
+            start_game <= 1;
     end
 
 
 
-    wire [3:0] query_x = NumPiecesX-((display_x-BoardBeginX) >> 4);
-    wire [5:0] query_y = NumPiecesY-1-((display_y-BoardBeginY) >> 4);
-    wire [7:0] query_pos = query_y*NumPiecesX+query_x;
-    wire [2:0] query_res;
-
+    wire [3:0]  query_x = ((display_x-BoardBeginX) >> 4);
+    wire [5:0]  query_y = NumPiecesY-1-((display_y-BoardBeginY) >> 4);
+    wire [7:0]  query_pos = query_y*NumPiecesX+query_x;
+    wire [2:0]  query_res;
+    wire [19:0] which_lines_cleared;
     tetris_engine engine(
-        .clk              (clk),
-        .reset            (reset_game | reset),
-        .next_fall        (game_clock),
-        .move_piece_left  (move_left),
-        .move_piece_right (move_right),
-        .display_query_pos(query_pos),
-        .display_query_res(query_res),
-        .debug            (debug)
+        .clk                (clk),
+        .reset_game         (reset_game),
+        .next_fall          (game_clock),
+        .move_piece_left    (move_left),
+        .move_piece_right   (move_right),
+        .rotate_right       (rotate_right),
+        .rotate_left        (rotate_left),
+        .display_query_pos  (query_pos),
+        .display_query_res  (query_res),
+        .game_over          (game_over),
+        .which_lines_cleared(which_lines_cleared),
+        .debug              (debug)
     );
-
 
 
 
     localparam BorderSize = 10;
 
-    wire       is_board = BoardBeginX <= display_x && display_x <= BoardEndX &&
+    wire        is_board = BoardBeginX <= display_x && display_x <= BoardEndX &&
         BoardBeginY <= display_y && display_y <= BoardEndY;
 
-    wire       is_board_border = !is_board &&
+    wire        is_board_border = !is_board &&
         BoardBeginX-BorderSize <= display_x && display_x <= BoardEndX+BorderSize &&
         BoardBeginY-BorderSize <= display_y && display_y <= BoardEndY+BorderSize;
 
 
-    localparam pink_r = 128;
-    localparam pink_g = 66;
-    localparam pink_b = 244;
 
-    wire [2:0] R_value_for_piece[7:0];
-    assign R_value_for_piece[0] = 0;
-    assign R_value_for_piece[1] = 0;
-    assign R_value_for_piece[2] = 2;
-    assign R_value_for_piece[3] = 1;
-    assign R_value_for_piece[4] = 1;
-    assign R_value_for_piece[5] = 1;
-    assign R_value_for_piece[6] = 1;
-    assign R_value_for_piece[7] = 1;
+    localparam red = 8'b11000000;
+    localparam green = 8'b00011000;
+    localparam c1 = 8'b00011011;
+    localparam c2 = 8'b1011000;
+    localparam c3 = 8'b10101000;
+    localparam c4 = 8'b1010001;
+    localparam c5 = 8'b1111000;
+    localparam c6 = 8'b0011000;
+    localparam white = 8'b11111111;
 
+    wire [7:0]  color_for_piece[7:0];
+    assign color_for_piece[0] = 0;
+    assign color_for_piece[1] = green;
+    assign color_for_piece[2] = c1;
+    assign color_for_piece[3] = c2;
+    assign color_for_piece[4] = c3;
+    assign color_for_piece[5] = c4;
+    assign color_for_piece[6] = c5;
+    assign color_for_piece[7] = c6;
 
-    wire [2:0] G_value_for_piece[7:0];
-    assign G_value_for_piece[0] = 0;
-    assign G_value_for_piece[1] = 1;
-    assign G_value_for_piece[2] = 2;
-    assign G_value_for_piece[3] = 2;
-    assign G_value_for_piece[4] = 2;
-    assign G_value_for_piece[5] = 2;
-    assign G_value_for_piece[6] = 2;
-    assign G_value_for_piece[7] = 2;
+    wire [7:0]  border_color = game_over ? red:green;
 
-    wire [2:1] B_value_for_piece[7:0];
-    assign B_value_for_piece[0] = 0;
-    assign B_value_for_piece[1] = 3;
-    assign B_value_for_piece[2] = 2;
-    assign B_value_for_piece[3] = 0;
-    assign B_value_for_piece[4] = 0;
-    assign B_value_for_piece[5] = 1;
-    assign B_value_for_piece[6] = 0;
-    assign B_value_for_piece[7] = 1;
+    assign {VGA_R, VGA_G, VGA_B} = !out_active ? 0:
+        (is_board_border ? border_color:
+            (!is_board ? 0:
+                (which_lines_cleared[query_y] ? white:color_for_piece[query_res])));
 
-
-    assign VGA_R[2:0] = !out_active ? 0:(is_board_border ? pink_r:
+    /*
+    assign VGA_R[2:0] = !out_active ? 0:(is_board_border ? border_color_r:
         (is_board ? R_value_for_piece[query_res]:0));
-    assign VGA_G[2:0] = !out_active ? 0:(is_board_border ? pink_g:
+    assign VGA_G[2:0] = !out_active ? 0:(is_board_border ? border_color_g:
         (is_board ? G_value_for_piece[query_res]:0));
-    assign VGA_B[2:1] = !out_active ? 0:(is_board_border ? pink_b:
+    assign VGA_B[2:1] = !out_active ? 0:(is_board_border ? border_color_b:
         (is_board ? B_value_for_piece[query_res]:0));
-
+*/
 endmodule

@@ -50,26 +50,6 @@ module top(
     input      [3:0] btn
 );
 
-    wire       start_fill;
-    wire       start_blit;
-    wire       fill_value;
-    wire       start_ram_read;
-    wire       start_ram_write;
-    wire [8:0] X1;
-    wire [7:0] Y1;
-    wire [8:0] X2;
-    wire [7:0] Y2;
-    wire [8:0] op_width;
-    wire [7:0] op_height;
-    wire       error;
-    wire       status;
-    wire       ram_byte_ready;
-    wire [7:0] ram_byte;
-    wire [7:0] write_ram_byte;
-
-        //assign Led = {8{error}};
-        //assign Led = 0;
-
     wire [3:0] syn_btn;
     Synchronizer#(.BIT_NUM(4)) btn_syn(
         .in (btn),
@@ -91,9 +71,31 @@ module top(
         .out(move_left)
     );
 
+    wire       rotate_right;
+    ActionGenerator rotate_right_action(
+        .in (syn_btn[2]),
+        .clk(CLK),
+        .out(rotate_right)
+    );
+
+    wire       rotate_left;
+    ActionGenerator rotate_left_action(
+        .in (syn_btn[3]),
+        .clk(CLK),
+        .out(rotate_left)
+    );
+
+    wire reset_game;
+    ActionGenerator reset_game_action(
+        .in (syn_btn[0] & syn_btn[1]),
+        .clk(CLK),
+        .out(reset_game)
+    );
+    wire game_over;
+
     tetris game(
         .clk       (CLK),
-        .reset     (0),
+        .reset_game  (reset_game & game_over),
         // vga outs
         .hsync     (HSYNC),
         .vsync     (VSYNC),
@@ -102,8 +104,82 @@ module top(
         .VGA_B     (VGA_B),
         .move_right(move_right),
         .move_left (move_left),
-        .debug     (Led[6:0])
+        .rotate_right(rotate_right),
+        .rotate_left(rotate_left),
+        .game_over(game_over),
+        .debug     (Led[7:0])
     );
+
+
+    wire       start_fill;
+    wire       start_blit;
+    wire       fill_value;
+    wire       start_ram_read;
+    wire       start_ram_write;
+    wire [8:0] X1;
+    wire [7:0] Y1;
+    wire [8:0] X2;
+    wire [7:0] Y2;
+    wire [8:0] op_width;
+    wire [7:0] op_height;
+    wire       error;
+    wire       status;
+    wire       ram_byte_ready;
+    wire [7:0] ram_byte;
+    wire [7:0] write_ram_byte;
+
+    EPP epp(
+        .clk            (CLK),
+        .EppAstb        (EppAstb),
+        .EppDstb        (EppDstb),
+        .EppWR          (EppWR),
+        .EppWait        (EppWait),
+        .EppDB          (EppDB),
+        .X1             (X1),
+        .Y1             (Y1),
+        .X2             (X2),
+        .Y2             (Y2),
+        .op_width       (op_width),
+        .op_height      (op_height),
+        .start_fill     (start_fill),
+        .fill_value     (fill_value),
+        .start_blit     (start_blit),
+        .start_read_ram (start_ram_read),
+        .status         (status),
+        .ram_byte_ready (ram_byte_ready),
+        .ram_byte       (ram_byte),
+        .write_ram_byte (write_ram_byte),
+        .start_write_ram(start_ram_write)
+    );
+
+endmodule
+
+
+
+
+
+/*
+    wire       start_fill;
+    wire       start_blit;
+    wire       fill_value;
+    wire       start_ram_read;
+    wire       start_ram_write;
+    wire [8:0] X1;
+    wire [7:0] Y1;
+    wire [8:0] X2;
+    wire [7:0] Y2;
+    wire [8:0] op_width;
+    wire [7:0] op_height;
+    wire       error;
+    wire       status;
+    wire       ram_byte_ready;
+    wire [7:0] ram_byte;
+    wire [7:0] write_ram_byte;
+
+        //assign Led = {8{error}};
+        //assign Led = 0;
+
+
     assign Led[7] = btn[0];
 
 
@@ -132,4 +208,4 @@ module top(
     );
 
 
-endmodule
+endmodule*/
