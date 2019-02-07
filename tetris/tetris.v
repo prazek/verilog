@@ -6,6 +6,8 @@ module tetris(
 
     input             move_right,
     input             move_left,
+    input             move_down,
+    input             drop,
     input             rotate_right,
     input             rotate_left,
 
@@ -48,18 +50,25 @@ module tetris(
     );
 
 
-    // TODO speedup game every line
+        // TODO speedup game every line
     reg [23:0]  count = 1;
     reg         start_game = 0;
+    reg         dropping = 0;
+    wire        game_clock = move_down | count == 0 || dropping;
+    wire        fallen;
 
-    wire        game_clock = count == 0;
     always @(posedge clk) begin
+        if (move_down)
+            count <= 1;
         if (start_game)
             count <= count+1;
-        if (move_right || move_left || rotate_left || rotate_right)
+        if (drop)
+            dropping <= 1;
+        if (fallen)
+            dropping <= 0;
+        if (move_right || move_left || move_down || drop || rotate_left || rotate_right)
             start_game <= 1;
     end
-
 
 
     wire [3:0]  query_x = ((display_x-BoardBeginX) >> 4);
@@ -79,9 +88,9 @@ module tetris(
         .display_query_res  (query_res),
         .game_over          (game_over),
         .which_lines_cleared(which_lines_cleared),
+        .fallen             (fallen),
         .debug              (debug)
     );
-
 
 
     localparam BorderSize = 10;
@@ -92,7 +101,6 @@ module tetris(
     wire        is_board_border = !is_board &&
         BoardBeginX-BorderSize <= display_x && display_x <= BoardEndX+BorderSize &&
         BoardBeginY-BorderSize <= display_y && display_y <= BoardEndY+BorderSize;
-
 
 
     localparam red = 8'b11000000;
@@ -122,12 +130,4 @@ module tetris(
             (!is_board ? 0:
                 (which_lines_cleared[query_y] ? white:color_for_piece[query_res])));
 
-    /*
-    assign VGA_R[2:0] = !out_active ? 0:(is_board_border ? border_color_r:
-        (is_board ? R_value_for_piece[query_res]:0));
-    assign VGA_G[2:0] = !out_active ? 0:(is_board_border ? border_color_g:
-        (is_board ? G_value_for_piece[query_res]:0));
-    assign VGA_B[2:1] = !out_active ? 0:(is_board_border ? border_color_b:
-        (is_board ? B_value_for_piece[query_res]:0));
-*/
 endmodule

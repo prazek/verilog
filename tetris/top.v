@@ -58,154 +58,59 @@ module top(
     );
 
     wire       move_right;
-    ActionGenerator move_right_action(
-        .in (syn_btn[0]),
-        .clk(CLK),
-        .out(move_right)
-    );
-
+    ActionGenerator move_right_action(syn_btn[0], CLK, move_right);
     wire       move_left;
-    ActionGenerator move_left_action(
-        .in (syn_btn[1]),
-        .clk(CLK),
-        .out(move_left)
-    );
-
+    ActionGenerator move_left_action(syn_btn[1], CLK, move_left);
     wire       rotate_right;
-    ActionGenerator rotate_right_action(
-        .in (syn_btn[2]),
-        .clk(CLK),
-        .out(rotate_right)
-    );
-
+    ActionGenerator rotate_right_action(syn_btn[2], CLK, rotate_right);
     wire       rotate_left;
-    ActionGenerator rotate_left_action(
-        .in (syn_btn[3]),
-        .clk(CLK),
-        .out(rotate_left)
-    );
+    ActionGenerator rotate_left_action(syn_btn[3], CLK,rotate_left);
+    wire       reset_game;
+    ActionGenerator reset_game_action(syn_btn[0] & syn_btn[1], CLK, reset_game);
+    wire       game_over;
 
-    wire reset_game;
-    ActionGenerator reset_game_action(
-        .in (syn_btn[0] & syn_btn[1]),
-        .clk(CLK),
-        .out(reset_game)
-    );
-    wire game_over;
+    wire       epp_move_left, epp_move_right, epp_move_down, epp_drop, epp_rotate_right, epp_rotate_left;
+    wire       epp_moving_left, epp_moving_right, epp_moving_down, epp_dropping, epp_rotating_right, epp_rotating_left;
+
+    ActionGenerator action_epp_move_left(epp_move_left, CLK, epp_moving_left);
+    ActionGenerator action_epp_move_right(epp_move_right, CLK, epp_moving_right);
+    ActionGenerator action_epp_move_down(epp_move_down, CLK, epp_moving_down);
+    ActionGenerator action_epp_drop(epp_drop, CLK, epp_dropping);
+    ActionGenerator action_epp_rotate_right(epp_rotate_right, CLK, epp_rotating_right);
+    ActionGenerator action_epp_rotate_left(epp_rotate_left, CLK, epp_rotating_left);
 
     tetris game(
-        .clk       (CLK),
+        .clk         (CLK),
         .reset_game  (reset_game & game_over),
         // vga outs
-        .hsync     (HSYNC),
-        .vsync     (VSYNC),
-        .VGA_R     (VGA_R),
-        .VGA_G     (VGA_G),
-        .VGA_B     (VGA_B),
-        .move_right(move_right),
-        .move_left (move_left),
-        .rotate_right(rotate_right),
-        .rotate_left(rotate_left),
-        .game_over(game_over),
-        .debug     (Led[7:0])
+        .hsync       (HSYNC),
+        .vsync       (VSYNC),
+        .VGA_R       (VGA_R),
+        .VGA_G       (VGA_G),
+        .VGA_B       (VGA_B),
+        .move_right  (move_right | epp_moving_right),
+        .move_left   (move_left | epp_moving_left),
+        .move_down   (epp_moving_down),
+        .drop        (epp_dropping),
+        .rotate_right(rotate_right | epp_rotating_right),
+        .rotate_left (rotate_left | epp_rotating_left),
+        .game_over   (game_over),
+        .debug       (Led[7:0])
     );
 
-
-    wire       start_fill;
-    wire       start_blit;
-    wire       fill_value;
-    wire       start_ram_read;
-    wire       start_ram_write;
-    wire [8:0] X1;
-    wire [7:0] Y1;
-    wire [8:0] X2;
-    wire [7:0] Y2;
-    wire [8:0] op_width;
-    wire [7:0] op_height;
-    wire       error;
-    wire       status;
-    wire       ram_byte_ready;
-    wire [7:0] ram_byte;
-    wire [7:0] write_ram_byte;
-
     EPP epp(
-        .clk            (CLK),
-        .EppAstb        (EppAstb),
-        .EppDstb        (EppDstb),
-        .EppWR          (EppWR),
-        .EppWait        (EppWait),
-        .EppDB          (EppDB),
-        .X1             (X1),
-        .Y1             (Y1),
-        .X2             (X2),
-        .Y2             (Y2),
-        .op_width       (op_width),
-        .op_height      (op_height),
-        .start_fill     (start_fill),
-        .fill_value     (fill_value),
-        .start_blit     (start_blit),
-        .start_read_ram (start_ram_read),
-        .status         (status),
-        .ram_byte_ready (ram_byte_ready),
-        .ram_byte       (ram_byte),
-        .write_ram_byte (write_ram_byte),
-        .start_write_ram(start_ram_write)
+        .clk         (CLK),
+        .EppAstb     (EppAstb),
+        .EppDstb     (EppDstb),
+        .EppWR       (EppWR),
+        .EppWait     (EppWait),
+        .EppDB       (EppDB),
+        .move_left   (epp_move_left),
+        .move_right  (epp_move_right),
+        .move_down   (epp_move_down),
+        .drop        (epp_drop),
+        .rotate_left (epp_rotate_left),
+        .rotate_right(epp_rotate_right)
     );
 
 endmodule
-
-
-
-
-
-/*
-    wire       start_fill;
-    wire       start_blit;
-    wire       fill_value;
-    wire       start_ram_read;
-    wire       start_ram_write;
-    wire [8:0] X1;
-    wire [7:0] Y1;
-    wire [8:0] X2;
-    wire [7:0] Y2;
-    wire [8:0] op_width;
-    wire [7:0] op_height;
-    wire       error;
-    wire       status;
-    wire       ram_byte_ready;
-    wire [7:0] ram_byte;
-    wire [7:0] write_ram_byte;
-
-        //assign Led = {8{error}};
-        //assign Led = 0;
-
-
-    assign Led[7] = btn[0];
-
-
-    EPP epp(
-        .clk            (CLK),
-        .EppAstb        (EppAstb),
-        .EppDstb        (EppDstb),
-        .EppWR          (EppWR),
-        .EppWait        (EppWait),
-        .EppDB          (EppDB),
-        .X1             (X1),
-        .Y1             (Y1),
-        .X2             (X2),
-        .Y2             (Y2),
-        .op_width       (op_width),
-        .op_height      (op_height),
-        .start_fill     (start_fill),
-        .fill_value     (fill_value),
-        .start_blit     (start_blit),
-        .start_read_ram (start_ram_read),
-        .status         (status),
-        .ram_byte_ready (ram_byte_ready),
-        .ram_byte       (ram_byte),
-        .write_ram_byte (write_ram_byte),
-        .start_write_ram(start_ram_write)
-    );
-
-
-endmodule*/

@@ -17,7 +17,8 @@ module tetris_engine(
     output reg        game_over = 0,
     output reg [19:0] which_lines_cleared = 0,
     output reg [20:0] game_lines_cleared = 0,
-    output reg [7:0]  debug = 0
+    output reg [7:0]  debug = 0,
+    output reg        fallen = 0
 );
     localparam GameWidth = 10;
     localparam GameHeight = 20;
@@ -26,10 +27,10 @@ module tetris_engine(
     wire        [3:0] PiecesPos_X[4+4*NumPieces-1:4];
     wire        [4:0] PiecesPos_Y[4+4*NumPieces-1:4];
         // Z piece
-    assign PiecesPos_X[4] = 5;
-    assign PiecesPos_X[5] = 6;
-    assign PiecesPos_X[6] = 6;
-    assign PiecesPos_X[7] = 7;
+    assign PiecesPos_X[4] = 3;
+    assign PiecesPos_X[5] = 4;
+    assign PiecesPos_X[6] = 4;
+    assign PiecesPos_X[7] = 5;
 
     assign PiecesPos_Y[4] = 19;
     assign PiecesPos_Y[5] = 19;
@@ -37,10 +38,10 @@ module tetris_engine(
     assign PiecesPos_Y[7] = 18;
 
         // T piece
-    assign PiecesPos_X[8] = 6;
-    assign PiecesPos_X[9] = 5;
-    assign PiecesPos_X[10] = 6;
-    assign PiecesPos_X[11] = 7;
+    assign PiecesPos_X[8] = 5;
+    assign PiecesPos_X[9] = 4;
+    assign PiecesPos_X[10] = 5;
+    assign PiecesPos_X[11] = 6;
 
     assign PiecesPos_Y[8] = 19;
     assign PiecesPos_Y[9] = 18;
@@ -48,10 +49,10 @@ module tetris_engine(
     assign PiecesPos_Y[11] = 18;
 
         // S piece
-    assign PiecesPos_X[12] = 6;
-    assign PiecesPos_X[13] = 7;
-    assign PiecesPos_X[14] = 5;
-    assign PiecesPos_X[15] = 6;
+    assign PiecesPos_X[12] = 5;
+    assign PiecesPos_X[13] = 6;
+    assign PiecesPos_X[14] = 4;
+    assign PiecesPos_X[15] = 5;
 
     assign PiecesPos_Y[12] = 19;
     assign PiecesPos_Y[13] = 19;
@@ -59,10 +60,10 @@ module tetris_engine(
     assign PiecesPos_Y[15] = 18;
 
         // O piece
-    assign PiecesPos_X[16] = 6;
-    assign PiecesPos_X[17] = 7;
-    assign PiecesPos_X[18] = 6;
-    assign PiecesPos_X[19] = 7;
+    assign PiecesPos_X[16] = 4;
+    assign PiecesPos_X[17] = 5;
+    assign PiecesPos_X[18] = 4;
+    assign PiecesPos_X[19] = 5;
 
     assign PiecesPos_Y[16] = 19;
     assign PiecesPos_Y[17] = 19;
@@ -70,10 +71,10 @@ module tetris_engine(
     assign PiecesPos_Y[19] = 18;
 
         // L piece
-    assign PiecesPos_X[20] = 7;
-    assign PiecesPos_X[21] = 5;
-    assign PiecesPos_X[22] = 6;
-    assign PiecesPos_X[23] = 7;
+    assign PiecesPos_X[20] = 6;
+    assign PiecesPos_X[21] = 4;
+    assign PiecesPos_X[22] = 5;
+    assign PiecesPos_X[23] = 6;
 
     assign PiecesPos_Y[20] = 19;
     assign PiecesPos_Y[21] = 18;
@@ -81,10 +82,10 @@ module tetris_engine(
     assign PiecesPos_Y[23] = 18;
 
         // J piece
-    assign PiecesPos_X[24] = 5;
-    assign PiecesPos_X[25] = 5;
-    assign PiecesPos_X[26] = 6;
-    assign PiecesPos_X[27] = 7;
+    assign PiecesPos_X[24] = 4;
+    assign PiecesPos_X[25] = 4;
+    assign PiecesPos_X[26] = 5;
+    assign PiecesPos_X[27] = 6;
 
     assign PiecesPos_Y[24] = 19;
     assign PiecesPos_Y[25] = 18;
@@ -92,10 +93,10 @@ module tetris_engine(
     assign PiecesPos_Y[27] = 18;
 
         // I piece
-    assign PiecesPos_X[28] = 5;
-    assign PiecesPos_X[29] = 6;
-    assign PiecesPos_X[30] = 7;
-    assign PiecesPos_X[31] = 8;
+    assign PiecesPos_X[28] = 4;
+    assign PiecesPos_X[29] = 5;
+    assign PiecesPos_X[30] = 6;
+    assign PiecesPos_X[31] = 7;
 
     assign PiecesPos_Y[28] = 18;
     assign PiecesPos_Y[29] = 18;
@@ -221,7 +222,8 @@ module tetris_engine(
 
 
     always @(posedge clk) begin
-        debug[state] <= 1;
+        debug[state >> 8] <= 1;
+        fallen <= 0;
         case (state)
             Ready: begin
                 if (reset_game) begin
@@ -288,6 +290,7 @@ module tetris_engine(
                     if (new_piece)
                         state <= GameOver;
                     else begin
+                        fallen <= 1;
                         state <= WritePiece;
                         piece_id <= 0;
                         ram_query <= piece_pos[0];
@@ -307,15 +310,15 @@ module tetris_engine(
                 end if (waiting_for_read)
                     waiting_for_read <= 0;
                 else begin
-                        if (ram_state != 0 || move_x[piece_id] < 0 || move_x[piece_id] >= GameWidth) begin
+                        if (ram_state != 0 || move_x[piece_id] < 0 || move_x[piece_id] >= GameWidth)
                             state <= Ready;
-                        end
-
-                        ram_query <= pos_move[piece_id+1];
-                        waiting_for_read <= 1;
-                        piece_id <= piece_id+1;
-                        if (piece_id+1 >= 4) begin
-                            state <= Move;
+                        else begin
+                            ram_query <= pos_move[piece_id+1];
+                            waiting_for_read <= 1;
+                            piece_id <= piece_id+1;
+                            if (piece_id+1 >= 4) begin
+                                state <= Move;
+                            end
                         end
                     end
             end
@@ -385,13 +388,6 @@ module tetris_engine(
                 else if (waiting_for_read)
                     waiting_for_read <= 0;
                 else if (ram_state == 0) begin // Not cleared
-                    /*if (num_lines_cleared > 0) begin // if need to copy
-                        waiting_for_read <= 1;
-                        copying_x <= 0;
-                        ram_query <= checking_y * GameWidth + 0;
-                        state <= CopyingLine;
-                        writing_copy <= 0;
-                    end else begin */
                     checking_y <= checking_y+1;
                     checking_x <= 0;
                     ram_query <= (checking_y+1)*GameWidth+0;
@@ -399,14 +395,13 @@ module tetris_engine(
                 end else begin // Possibly cleared line
                     checking_x <= checking_x+1;
                     waiting_for_read <= 1;
+                    ram_query <= checking_y*GameWidth+checking_x+1;
                     if (checking_x+1 >= GameWidth) begin // Cleared_line
                         game_lines_cleared <= game_lines_cleared+1;
                         checking_y <= checking_y+1;
                         checking_x <= 0;
                         ram_query <= (checking_y+1)*GameWidth+0;
                         which_lines_cleared[checking_y] <= 1;
-                    end else begin
-                        ram_query <= checking_y*GameWidth+checking_x+1;
                     end
                 end
             end
@@ -474,6 +469,7 @@ module tetris_engine(
 
                 current_piece <= next_piece;
                 state <= Ready;
+                new_piece <= 1;
                 next_piece <= next_piece+1;
                 if (next_piece+1 > 7)
                     next_piece <= 1;
@@ -490,7 +486,6 @@ module tetris_engine(
             end
         endcase
     end
-
 
 endmodule
 
