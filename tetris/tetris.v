@@ -29,6 +29,12 @@ module tetris(
     localparam BoardEndX = BoardBeginX+NumPiecesX*PieceSize;
     localparam BoardBeginY = 40;
     localparam BoardEndY = BoardBeginY+NumPiecesY*PieceSize;
+    localparam BorderSize = 10;
+    localparam NextPieceBoardX = BoardBeginX-BorderSize-4*PieceSize;
+    localparam NextPieceBoardY = BoardBeginY;
+    localparam NextPieceBoardEndX = BoardBeginX-BorderSize;
+    localparam NextPieceBoardEndY = BoardBeginY+4*PieceSize;
+
 
         // generate a 25 MHz pixel strobe
     reg [15:0]  cnt = 0;
@@ -77,6 +83,8 @@ module tetris(
     wire [7:0]  query_pos = query_y*NumPiecesX+query_x;
     wire [2:0]  query_res;
     wire [19:0] which_lines_cleared;
+    wire [3:0]  next_piece;
+    wire [16:0] next_piece_matrix;
     tetris_engine engine(
         .clk                (clk),
         .reset_game         (reset_game),
@@ -88,6 +96,8 @@ module tetris(
         .display_query_pos  (query_pos),
         .display_query_res  (query_res),
         .game_over          (game_over),
+        .next_piece         (next_piece),
+        .next_piece_matrix  (next_piece_matrix),
         .game_lines_cleared (score),
         .which_lines_cleared(which_lines_cleared),
         .fallen             (fallen),
@@ -95,20 +105,26 @@ module tetris(
     );
 
 
-    localparam BorderSize = 10;
 
-    wire        is_board = BoardBeginX <= display_x && display_x <= BoardEndX &&
-        BoardBeginY <= display_y && display_y <= BoardEndY;
+    wire        is_board = BoardBeginX <= display_x && display_x < BoardEndX &&
+        BoardBeginY <= display_y && display_y < BoardEndY;
 
     wire        is_board_border = !is_board &&
-        BoardBeginX-BorderSize <= display_x && display_x <= BoardEndX+BorderSize &&
-        BoardBeginY-BorderSize <= display_y && display_y <= BoardEndY+BorderSize;
+        BoardBeginX-BorderSize <= display_x && display_x < BoardEndX+BorderSize &&
+        BoardBeginY-BorderSize <= display_y && display_y < BoardEndY+BorderSize;
 
+    wire        is_next_piece_board = NextPieceBoardX <= display_x && display_x < NextPieceBoardEndX &&
+        NextPieceBoardY <= display_y && display_y < NextPieceBoardEndY;
+    wire        is_next_piece_border = !is_next_piece_board &&
+        NextPieceBoardX-BorderSize <= display_x && display_x < NextPieceBoardEndX+BorderSize &&
+        NextPieceBoardY-BorderSize <= display_y && display_y < NextPieceBoardEndY+BorderSize;
+
+    wire [4:0]  next_piece_pos = ((display_y-NextPieceBoardY) >> 4)*4+(display_x-NextPieceBoardX) >> 4;
 
     localparam red = 8'b11000000;
     localparam green = 8'b00011000;
     localparam blueish = 8'b00100011;
-    localparam c2 = 8'b0110001;
+    localparam c2 = 8'b0100111;
     localparam orange = 8'b10101000;
     localparam c4 = 8'b0110001;
     localparam c5 = 8'b1111000;
@@ -116,20 +132,23 @@ module tetris(
     localparam white = 8'b11111111;
 
     wire [7:0]  color_for_piece[7:0];
-    assign color_for_piece[0] = 0;
-    assign color_for_piece[1] = green;
-    assign color_for_piece[2] = blueish;
-    assign color_for_piece[3] = c2;
-    assign color_for_piece[4] = orange;
-    assign color_for_piece[5] = c4;
-    assign color_for_piece[6] = c5;
-    assign color_for_piece[7] = purple;
+    assign color_for_piece[0] = 0;      // Blank
+    assign color_for_piece[1] = green;  // Z
+    assign color_for_piece[2] = blueish;// T
+    assign color_for_piece[3] = c2;     // S
+    assign color_for_piece[4] = orange; // O
+    assign color_for_piece[5] = c4;     // L
+    assign color_for_piece[6] = c5;     // J
+    assign color_for_piece[7] = purple; // I
 
     wire [7:0]  border_color = game_over ? red:green;
 
     assign {VGA_R, VGA_G, VGA_B} = !out_active ? 0:
-        (is_board_border ? border_color:
-            (!is_board ? 0:
-                (which_lines_cleared[query_y] ? white:color_for_piece[query_res])));
+        ((is_board_border || is_next_piece_border) ? border_color:
+            // Here should be logic that uses next_piece_matrix to display next piece
+            // but it doesn't fit on BASYS 2 ;/
+            (is_next_piece_board ? (1 ? purple:0):
+                (!is_board ? 0:
+                    (which_lines_cleared[query_y] ? white:color_for_piece[query_res]))));
 
 endmodule

@@ -13,6 +13,8 @@ module tetris_engine(
     input  [11:0]     display_query_pos,
 
     output reg [2:0]  next_piece = 1,
+    output reg [15:0] next_piece_matrix = 3,
+
     output [2:0]      display_query_res,
     output reg        game_over = 0,
     output reg [19:0] which_lines_cleared = 0,
@@ -220,7 +222,7 @@ module tetris_engine(
     localparam ClearedLinesPeriod = 1 << 25;
     reg [27:0]        waiting_count = 0;
 
-    reg [15:0]         rng = 42;
+    reg [15:0]        rng = 42;
 
     integer           id;
     always @(posedge clk) begin
@@ -342,13 +344,13 @@ module tetris_engine(
                     if (ram_state != 0 || rot_x[piece_id] < 0 || rot_x[piece_id] >= GameWidth
                         || rot_y[piece_id] < 0 || rot_y[piece_id] >= GameHeight) begin
                         state <= Ready;
-                    end
-
-                    ram_query <= pos_rot[piece_id+1];
-                    waiting_for_read <= 1;
-                    piece_id <= piece_id+1;
-                    if (piece_id+1 >= 4) begin
-                        state <= Rotate;
+                    end else begin
+                        ram_query <= pos_rot[piece_id+1];
+                        waiting_for_read <= 1;
+                        piece_id <= piece_id+1;
+                        if (piece_id+1 >= 4) begin
+                            state <= Rotate;
+                        end
                     end
                 end
             end
