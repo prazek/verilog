@@ -108,7 +108,7 @@ module tetris(
     localparam red = 8'b11000000;
     localparam green = 8'b00011000;
     localparam blueish = 8'b00100011;
-    localparam c2 = 8'b1011000;
+    localparam c2 = 8'b0110001;
     localparam orange = 8'b10101000;
     localparam c4 = 8'b0110001;
     localparam c5 = 8'b1111000;

@@ -220,11 +220,12 @@ module tetris_engine(
     localparam ClearedLinesPeriod = 1 << 25;
     reg [27:0]        waiting_count = 0;
 
-    reg [2:0]         rng = 0;
+    reg [15:0]         rng = 42;
 
     integer           id;
     always @(posedge clk) begin
-        rng <= rng+1;
+        // Linear feedback shift register https://en.wikipedia.org/wiki/Linear-feedback_shift_register
+        rng <= (rng >> 1) | ((rng ^ (rng >> 2) ^ (rng >> 3) ^ (rng >> 5)) << 15);
         fallen <= 0;
         case (state)
             Ready: begin
@@ -459,12 +460,10 @@ module tetris_engine(
                 current_piece <= next_piece;
                 state <= Ready;
                 new_piece <= 1;
-                next_piece <= rng;
-                // TODO: fix RNG
-                rng <= rng+2;
-                if (rng > 7)
+                next_piece <= rng[2:0];
+                if (rng[2:0] > 7)
                     next_piece <= 1;
-                if (rng == 0)
+                if (rng[2:0] == 0)
                     next_piece <= 3;
             end
             GameOver: begin
