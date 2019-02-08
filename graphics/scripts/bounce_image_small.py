@@ -27,7 +27,8 @@ def simulate(port):
         port.put_reg(10, [dy % B])
         port.put_reg(11, [dy // B])
         port.put_reg(0x0d, [color])
-
+        while port.get_reg(15, 1)[0]:
+            pass
     border_w = (W - img_w) // 2
     border_h = (H - img_h) // 2
     bbox_w = W - border_w * 2
@@ -59,6 +60,8 @@ def simulate(port):
         port.put_reg(10, [bbox_h % B])
         port.put_reg(11, [bbox_h // B])
         port.put_reg(0x0c, [0])
+        while port.get_reg(15, 1)[0]:
+            pass
 
         if dw > 0:
             draw_rect(cur_w - dw, old_h, abs(dw), bbox_h + abs(dh), back_color)
