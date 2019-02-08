@@ -1,25 +1,26 @@
 `default_nettype none
 
 module tetris(
-    input             clk,
-    input             reset_game,
+    input              clk,
+    input              reset_game,
 
-    input             move_right,
-    input             move_left,
-    input             move_down,
-    input             drop,
-    input             rotate_right,
-    input             rotate_left,
+    input              move_right,
+    input              move_left,
+    input              move_down,
+    input              drop,
+    input              rotate_right,
+    input              rotate_left,
 
-    output            game_over,
+    output             game_over,
+    output      [20:0] score,
 
     // VGA out
-    output wire       hsync,    // horizontal sync output
-    output wire       vsync,    // vertical sync output
-    output wire [2:0] VGA_R,    // 3-bit VGA red output
-    output wire [2:0] VGA_G,    // 3-bit VGA green output
-    output wire [2:1] VGA_B,     // 2-bit VGA blue output
-    output      [7:0] debug
+    output wire        hsync,    // horizontal sync output
+    output wire        vsync,    // vertical sync output
+    output wire [2:0]  VGA_R,    // 3-bit VGA red output
+    output wire [2:0]  VGA_G,    // 3-bit VGA green output
+    output wire [2:1]  VGA_B,     // 2-bit VGA blue output
+    output      [7:0]  debug
 );
     localparam NumPiecesX = 10;
     localparam NumPiecesY = 20;
@@ -30,7 +31,7 @@ module tetris(
     localparam BoardEndY = BoardBeginY+NumPiecesY*PieceSize;
 
         // generate a 25 MHz pixel strobe
-    reg [15:0]  cnt;
+    reg [15:0]  cnt = 0;
     reg         pix_stb;
     always @(posedge clk)
         {pix_stb, cnt} <= cnt+16'h4000;  // divide by 4: (2^16)/4 = 0x4000
@@ -87,6 +88,7 @@ module tetris(
         .display_query_pos  (query_pos),
         .display_query_res  (query_res),
         .game_over          (game_over),
+        .game_lines_cleared (score),
         .which_lines_cleared(which_lines_cleared),
         .fallen             (fallen),
         .debug              (debug)
@@ -105,23 +107,23 @@ module tetris(
 
     localparam red = 8'b11000000;
     localparam green = 8'b00011000;
-    localparam c1 = 8'b00011011;
+    localparam blueish = 8'b00100011;
     localparam c2 = 8'b1011000;
-    localparam c3 = 8'b10101000;
-    localparam c4 = 8'b1010001;
+    localparam orange = 8'b10101000;
+    localparam c4 = 8'b0110001;
     localparam c5 = 8'b1111000;
-    localparam c6 = 8'b0011000;
+    localparam purple = 8'b1000010;
     localparam white = 8'b11111111;
 
     wire [7:0]  color_for_piece[7:0];
     assign color_for_piece[0] = 0;
     assign color_for_piece[1] = green;
-    assign color_for_piece[2] = c1;
+    assign color_for_piece[2] = blueish;
     assign color_for_piece[3] = c2;
-    assign color_for_piece[4] = c3;
+    assign color_for_piece[4] = orange;
     assign color_for_piece[5] = c4;
     assign color_for_piece[6] = c5;
-    assign color_for_piece[7] = c6;
+    assign color_for_piece[7] = purple;
 
     wire [7:0]  border_color = game_over ? red:green;
 

@@ -9,12 +9,13 @@ module EPP(
     inout wire [7:0] EppDB,
 
 
-    output reg move_left = 0,
-    output reg move_right = 0,
-    output reg move_down = 0,
-    output reg drop = 0,
-    output reg rotate_left = 0,
-    output reg rotate_right = 0
+    output reg       move_left = 0,
+    output reg       move_right = 0,
+    output reg       move_down = 0,
+    output reg       drop = 0,
+    output reg       rotate_left = 0,
+    output reg       rotate_right = 0,
+    output reg       restart = 0
 );
 
 
@@ -26,7 +27,6 @@ module EPP(
     assign EppDB = ~epp_write_command ? writeEppDB:8'bz;
     assign data_in = EppDB;
 
-    reg        is_waiting_for_ram = 0;
     always @(posedge clk) begin
         move_left <= 0;
         move_right <= 0;
@@ -35,6 +35,7 @@ module EPP(
         rotate_left <= 0;
         rotate_right <= 0;
         EppWait <= 0;
+        restart <= 0;
 
         if (EppAstb == 0) begin
             EppWait <= 1;
@@ -58,6 +59,8 @@ module EPP(
                         rotate_right <= 1;
                     else if (data_in[6])
                         rotate_left <= 1;
+                    else if (data_in[7])
+                        restart <= 1;
                 end else
                     writeEppDB <= 0;
             end else begin // Invalid values

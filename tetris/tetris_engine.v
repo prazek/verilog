@@ -51,8 +51,8 @@ module tetris_engine(
         // S piece
     assign PiecesPos_X[12] = 5;
     assign PiecesPos_X[13] = 6;
-    assign PiecesPos_X[14] = 4;
-    assign PiecesPos_X[15] = 5;
+    assign PiecesPos_X[14] = 5;
+    assign PiecesPos_X[15] = 4;
 
     assign PiecesPos_Y[12] = 19;
     assign PiecesPos_Y[13] = 19;
@@ -160,6 +160,7 @@ module tetris_engine(
         || display_query_pos == piece_pos[2]
         || display_query_pos == piece_pos[3]) ? current_piece:display_ram[2:0];
 
+    localparam POINT_OF_ROTATION = 2;
     genvar i;
     generate
         for (i = 0; i < 4; i = i+1) begin : pos
@@ -170,15 +171,15 @@ module tetris_engine(
             assign move_y[i] = current_y[i];
             assign pos_move[i] = move_y[i]*GameWidth+move_x[i];
 
-            assign related_pos_y[i] = current_y[i]-current_y[3];
+            assign related_pos_y[i] = current_y[i]-current_y[POINT_OF_ROTATION];
 
-            assign related_pos_x[i] = current_x[i]-current_x[3];
+            assign related_pos_x[i] = current_x[i]-current_x[POINT_OF_ROTATION];
 
-            assign rot_right_x[i] = current_x[3]+related_pos_y[i];
-            assign rot_right_y[i] = current_y[3]-related_pos_x[i];
+            assign rot_right_x[i] = current_x[POINT_OF_ROTATION]+related_pos_y[i];
+            assign rot_right_y[i] = current_y[POINT_OF_ROTATION]-related_pos_x[i];
 
-            assign rot_left_x[i] = current_x[3]-related_pos_y[i];
-            assign rot_left_y[i] = current_y[3]+related_pos_x[i];
+            assign rot_left_x[i] = current_x[POINT_OF_ROTATION]-related_pos_y[i];
+            assign rot_left_y[i] = current_y[POINT_OF_ROTATION]+related_pos_x[i];
 
             assign rot_x[i] = which_rot == 0 ? rot_left_x[i]:rot_right_x[i];
             assign rot_y[i] = which_rot == 0 ? rot_left_y[i]:rot_right_y[i];
@@ -214,15 +215,16 @@ module tetris_engine(
     reg [2:0]         num_lines_cleared = 0;
     reg signed [5:0]  copying_x = 0;
     reg signed [6:0]  copying_y = 0;
-    reg               writing_copy = 0;
-    reg               copying_next_line = 0;
+    reg               has_read_value = 0;
 
-    localparam ClearedLinesPeriod = 1 << 20;
-    reg [25:0]        waiting_count = 0;
+    localparam ClearedLinesPeriod = 1 << 25;
+    reg [27:0]        waiting_count = 0;
 
+    reg [2:0]         rng = 0;
 
+    integer           id;
     always @(posedge clk) begin
-        debug[state >> 8] <= 1;
+        rng <= rng+1;
         fallen <= 0;
         case (state)
             Ready: begin
@@ -280,10 +282,8 @@ module tetris_engine(
             end
             Falling: begin
                 if (down_clear) begin
-                    current_y[0] <= current_y[0]-1;
-                    current_y[1] <= current_y[1]-1;
-                    current_y[2] <= current_y[2]-1;
-                    current_y[3] <= current_y[3]-1;
+                    for (id = 0; id < 4; id = id+1)
+                        current_y[id] <= current_y[id]-1;
                     new_piece <= 0;
                     state <= Ready;
                 end else begin
@@ -323,10 +323,8 @@ module tetris_engine(
                     end
             end
             Move: begin
-                current_x[0] <= move_x[0];
-                current_x[1] <= move_x[1];
-                current_x[2] <= move_x[2];
-                current_x[3] <= move_x[3];
+                for (id = 0; id < 4; id = id+1)
+                    current_x[id] <= move_x[id];
                 // TODO if going down.
                 state <= Ready;
             end
@@ -354,15 +352,10 @@ module tetris_engine(
                 end
             end
             Rotate: begin
-                current_x[0] <= rot_x[0];
-                current_x[1] <= rot_x[1];
-                current_x[2] <= rot_x[2];
-                current_x[3] <= rot_x[3];
-
-                current_y[0] <= rot_y[0];
-                current_y[1] <= rot_y[1];
-                current_y[2] <= rot_y[2];
-                current_y[3] <= rot_y[3];
+                for (id = 0; id < 4; id = id+1) begin
+                    current_x[id] <= rot_x[id];
+                    current_y[id] <= rot_y[id];
+                end
                 state <= Ready;
             end
 
@@ -385,9 +378,9 @@ module tetris_engine(
                     state <= WaitWithClearedLines;
                     waiting_count <= 0;
                 end
-                else if (waiting_for_read)
+                else if (waiting_for_read) begin
                     waiting_for_read <= 0;
-                else if (ram_state == 0) begin // Not cleared
+                end else if (ram_state == 0) begin // Not cleared
                     checking_y <= checking_y+1;
                     checking_x <= 0;
                     ram_query <= (checking_y+1)*GameWidth+0;
@@ -406,73 +399,73 @@ module tetris_engine(
                 end
             end
             WaitWithClearedLines: begin // waiting_count
+                if (which_lines_cleared == 0)
+                    state <= SpawningNewPiece;
                 waiting_count <= waiting_count+1;
-                if (waiting_count > WaitWithClearedLines) begin
+                if (waiting_count > ClearedLinesPeriod) begin
                     num_lines_cleared <= 0;
                     copying_x <= 0;
                     copying_y <= 0;
-                    waiting_for_read <= 0;
+                    waiting_for_read <= 1;
+                    ram_query <= 0;
                     state <= CopyingLine;
-                    writing_copy <= 0;
                 end
 
             end
 
-            CopyingLine: begin // requires: num_lines_cleared, checking_y, waiting_for_read, copying_x, writing_copy
-                if (copying_next_line) begin
-                    if (copying_y >= GameHeight) begin
-                        state <= SpawningNewPiece;
-                    end
-                    if (which_lines_cleared[copying_y]) begin // this line was cleared
-                        num_lines_cleared <= num_lines_cleared+1;
-                        copying_y <= copying_y+1;
-                        which_lines_cleared[copying_y] <= 0;
-                    end else if (num_lines_cleared == 0) // This line was not cleared
-                        copying_y <= copying_y+1;
-                    else begin
-                        copying_next_line <= 0;
-                        waiting_for_read <= 1;
-                        copying_x <= 0;
-                        writing_copy <= 0;
-                        ram_query <= checking_y*GameWidth+0;
-                    end
-                end else if (waiting_for_read)
+            CopyingLine: begin // requires: num_lines_cleared, copying_y, waiting_for_read, copying_x, writing_copy
+                debug[0] <= 1;
+                if (waiting_for_read) begin
                     waiting_for_read <= 0;
-                else if (!writing_copy) begin
+                    has_read_value <= 1;
+                end
+                else if (has_read_value) begin
+                    debug[2] <= 1;
                     write_ram <= 1;
                     write_value <= ram_state;
-                    ram_query <= (checking_y-num_lines_cleared)*GameWidth+copying_x;
-                    writing_copy <= 1;
+                    ram_query <= (copying_y-num_lines_cleared)*GameWidth+copying_x;
+                    has_read_value <= 0;
                 end else begin
+                    debug[3] <= 1;
                     write_ram <= 0;
-                    ram_query <= checking_y*GameWidth+copying_x+1;
                     copying_x <= copying_x+1;
+                    ram_query <= copying_y*GameWidth+copying_x+1;
                     waiting_for_read <= 1;
                     if (copying_x+1 >= GameWidth) begin // Copied all values.
-                        copying_next_line <= 1;
-                        checking_y <= checking_y+1;
-                        checking_x <= 0;
+                        debug[4] <= 1;
+                        copying_y <= copying_y+1;
+                        copying_x <= 0;
+                        ram_query <= (copying_y+1)*GameWidth+0;
+                        if (which_lines_cleared[copying_y]) begin
+                            debug[5] <= 1;
+                            num_lines_cleared <= num_lines_cleared+1;
+                            which_lines_cleared[copying_y] <= 0;
+                        end
+                        if (copying_y+1 >= GameHeight) begin
+                            debug[6] <= 1;
+                            state <= SpawningNewPiece;
+                            waiting_for_read <= 0;
+                        end
                     end
                 end
+
             end
 
             SpawningNewPiece: begin
-                current_x[0] <= PiecesPos_X[next_piece*4+0];
-                current_x[1] <= PiecesPos_X[next_piece*4+1];
-                current_x[2] <= PiecesPos_X[next_piece*4+2];
-                current_x[3] <= PiecesPos_X[next_piece*4+3];
-
-                current_y[0] <= PiecesPos_Y[next_piece*4+0];
-                current_y[1] <= PiecesPos_Y[next_piece*4+1];
-                current_y[2] <= PiecesPos_Y[next_piece*4+2];
-                current_y[3] <= PiecesPos_Y[next_piece*4+3];
-
+                for (id = 0; id < 4; id = id+1) begin
+                    current_x[id] <= PiecesPos_X[next_piece*4+id];
+                    current_y[id] <= PiecesPos_Y[next_piece*4+id];
+                end
                 current_piece <= next_piece;
                 state <= Ready;
                 new_piece <= 1;
-                next_piece <= next_piece+1;
-                if (next_piece+1 > 7)
+                next_piece <= rng;
+                // TODO: fix RNG
+                rng <= rng+2;
+                if (rng > 7)
                     next_piece <= 1;
+                if (rng == 0)
+                    next_piece <= 3;
             end
             GameOver: begin
                 game_over <= 1;

@@ -28,7 +28,8 @@ k2c = {
     'KEY_DOWN': 8,
     ' ': 16,
     'b': 32,
-    'v': 64
+    'v': 64,
+    'r': 128
 }
 
 def interact(win, port):

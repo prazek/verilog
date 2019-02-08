@@ -49,3 +49,18 @@ NET "EppDB<4>" LOC = "L2"; # Bank = 3
 NET "EppDB<5>" LOC = "H2"; # Bank = 3
 NET "EppDB<6>" LOC = "H1"; # Bank = 3
 NET "EppDB<7>" LOC = "H3"; # Bank = 3
+
+
+NET "an<0>" LOC = "F12";
+NET "an<1>" LOC = "J12";
+NET "an<2>" LOC = "M13";
+NET "an<3>" LOC = "K14";
+
+NET "seg<0>" LOC = "L14";
+NET "seg<1>" LOC = "H12";
+NET "seg<2>" LOC = "N14";
+NET "seg<3>" LOC = "N11";
+NET "seg<4>" LOC = "P12";
+NET "seg<5>" LOC = "L13";
+NET "seg<6>" LOC = "M12";
+NET "dp" LOC = "N13";
